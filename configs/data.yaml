@@ -1,0 +1,15 @@
+data:
+  # Folder holding Bonafide/ and Screens/. SCREENPAD_DATA_ROOT overrides it (used on Colab).
+  root: DATA/test/data
+  manifest: ${output_dir}/manifest.csv
+  splits: ${output_dir}/splits.csv
+  hf_repo: Jamie1701/screenpad-data
+
+split:
+  # Every real attack goes to test together with its bona fide twin (same image ID).
+  # On top of the twins, this many unpaired bona fide images are also held out for test,
+  # so test BPCER is estimated on more than 23 images.
+  test_extra_bonafide: 177
+  # Fraction of the remaining bona fide IDs used for validation (synthetic attacks for
+  # val are generated from these only).
+  val_frac: 0.15

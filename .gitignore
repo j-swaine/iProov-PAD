@@ -1,0 +1,15 @@
+# data and outputs live on Hugging Face / Drive, never in git
+/DATA/
+/results/
+/artefacts/*
+!/artefacts/.gitkeep
+
+.venv
+.venv.nosync/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+.env
