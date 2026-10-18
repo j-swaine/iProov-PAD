@@ -11,8 +11,8 @@ from .manifest import build_manifest
 from .splits import make_splits, split_summary
 
 
-def cache_name(name: str, size: int) -> str:
-    return f"crops_{name}_{size}.npz"
+def cache_name(name: str, size: int, align: bool = False) -> str:
+    return f"crops_{name}_{size}{'_aligned' if align else ''}.npz"
 
 
 def cmd_pull(args) -> None:
@@ -29,7 +29,7 @@ def cmd_pull(args) -> None:
     get = lambda f, **kw: hf_hub_download(repo_id=cfg.data.hf_repo, repo_type="dataset", filename=f, **kw)
     if args.cache:
         for name in cfg.preprocess.crops:
-            f = cache_name(name, int(cfg.preprocess.size))
+            f = cache_name(name, int(cfg.preprocess.size), bool(cfg.preprocess.align))
             get(f"{cfg.data.hf_cache_dir}/{f}", local_dir=Path(cfg.data.cache_dir).parent)
             log.info("pulled %s -> %s", f, cfg.data.cache_dir)
         return
@@ -79,10 +79,11 @@ def cmd_cache(args) -> None:
     log = _setup(cfg)
     splits = pd.read_csv(cfg.data.splits, dtype={"id": str})
     size, det_size = int(cfg.preprocess.size), int(cfg.preprocess.det_size)
-    caches = build_crops(splits, cfg.data.root, dict(cfg.preprocess.crops), size, det_size)
+    align = bool(cfg.preprocess.align)
+    caches = build_crops(splits, cfg.data.root, dict(cfg.preprocess.crops), size, det_size, align)
     out = Path(cfg.data.cache_dir)
     for name, c in caches.items():
-        path = out / cache_name(name, size)
+        path = out / cache_name(name, size, align)
         save_cache(c, path)
         n = verify_cache(path, cfg.data.root, det_size)
         f = cache_frame(c)

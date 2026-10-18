@@ -1,0 +1,45 @@
+synth:
+  # Recapture simulator (screenpad/synth/recapture.py). Each synthetic attack draws every parameter
+  # independently from these ranges ([lo, hi]; log-uniform where marked). Ranges were set from the
+  # 6 dev twin pairs (notebooks/Recapture.ipynb) and then widened, so the simulator randomises
+  # conditions rather than copying six photos. Test attacks were not looked at.
+  ranges:
+    layouts: [rgb_stripe, bgr_stripe, rgbg_diamond]
+    screen_per_src: [0.4, 1.0]  # log; dev: 0.43-0.8 screen px per FFHQ px
+    # log; camera px per source px, for attacks and camera-only controls alike. Dev: 2.3-3.0.
+    # The resample-ratio shortcut (attack crops are downsampled harder than bona fide ones) is broken on
+    # the bona fide side: camera-only controls are made at the same camera scale, so half the bona fide
+    # training crops are downsampled as hard as the attacks. Going much below the dev scale for attacks
+    # instead leaves the screen grid unrealistically visible in the crops (notebooks/Recapture.ipynb).
+    cam_per_src: [1.5, 3.5]
+    fill: [0.6, 0.98]
+    display_gamma: [1.9, 2.6]
+    saturation: [1.0, 1.45]  # dev attacks are more saturated than their twins (phone colour processing)
+    white_point: [0.88, 1.12]  # R and B gains, G = 1
+    black_level: [0.001, 0.02]  # log; dev tone curves lift blacks by up to ~25/255
+    veil: [0.0, 0.015]
+    p_glare: 0.2
+    glare: [0.02, 0.12]
+    glare_sigma: [0.1, 0.5]
+    p_dust: 0.3
+    max_dust: 40
+    tilt: [0.0, 0.06]  # dev homographies: opposite sides differ by up to ~15%
+    rotation: [-6.0, 6.0]
+    blur: [0.8, 2.2]  # camera px; the main control on how much grid survives the crop. Dev Samsung pairs are visibly softer than iPhone ones
+    vignette: [0.0, 0.25]
+    camera:
+      exposure: [0.8, 1.0]
+      wb: [0.9, 1.1]
+      shot: [0.0001, 0.003]  # log
+      read: [0.000001, 0.0001]  # log
+      p_denoise: 0.8
+      denoise: [0.3, 1.0]
+      contrast: [0.1, 0.5]  # dev attacks keep or raise contrast despite the screen's lifted blacks
+      sharpen_amount: [0.5, 2.5]
+      sharpen_radius: [0.7, 2.0]
+      jpeg_quality: [75, 97]
+  # Bona fide control: this fraction of bona fide training images also goes through the camera
+  # stage alone (no screen), so "processed by a phone camera" is not a cue for "attack".
+  camera_only_frac: 0.5
+  variants: 2  # synthetic attacks per bona fide source image
+  splits: [train, val]

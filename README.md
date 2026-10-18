@@ -28,11 +28,13 @@ Common commands:
 ```bash
 screenpad pull-data   # download + SHA-256-verify the data tar from the private HF dataset (needs `hf auth login`)
 screenpad manifest    # per-image table: id, label, size, ICC/EXIF flags, paired?
-screenpad splits      # assign IDs to train/val/test (all real attacks + their twins -> test)
+screenpad splits      # assign IDs to train/val/dev/test (6 real attacks + twins -> dev, 17 + twins -> test)
 screenpad audit       # leakage checks on the split
 screenpad eda         # face detections, attack/twin grid, power spectra -> results/eda/
-screenpad cache       # face-centred crops (tight k=1.0, loose k=1.25) at 384px -> results/cache/*.npz,
+screenpad cache       # aligned face crops (tight k=1.0, loose k=1.25) at 384px -> results/cache/crops_*_aligned.npz,
                       # each verified byte-exact against a fresh recompute (--push uploads to HF)
+screenpad synth       # synthetic screen recaptures (+ camera-only bona fide controls) of train/val images,
+                      # cropped by the same pipeline -> results/cache/synth_*.npz (never from test)
 screenpad pull-data --cache   # fetch the crop caches instead of the raw data
 # off-the-shelf comparison (needs OpenCV 4 for its Caffe face detector; layered, project env untouched):
 uv run --with 'opencv-python-headless>=4.10,<5' screenpad baseline-minifasnet --splits dev,val
@@ -42,7 +44,19 @@ Every command takes `--set key.sub=value` overrides and `--config extra.yaml` on
 
 ## EDA
 
-[`notebooks/EDA.ipynb`](notebooks/EDA.ipynb) - class-level distributions and separability of every salient feature (file metadata, face geometry, pixel and spectral statistics), the metadata shortcut demonstration (logistic regression), and what survives cropping. Run `screenpad eda` and `screenpad cache` first; re-execute with `uv run jupyter nbconvert --to notebook --execute --inplace notebooks/EDA.ipynb`.
+[`notebooks/EDA.ipynb`](notebooks/EDA.ipynb) - class-level distributions and separability of every salient feature (file metadata, face geometry, pixel and spectral statistics), the metadata shortcut demonstration (logistic regression), and what survives cropping. It describes the unaligned crops: run `screenpad eda` and `screenpad cache --set preprocess.align=false` first; re-execute with `uv run jupyter nbconvert --to notebook --execute --inplace notebooks/EDA.ipynb`.
+
+## Synthetic attacks
+
+Training has no real attacks. Attacks are synthesised from bona fide images by a physical recapture simulator ([`screenpad/synth/recapture.py`](screenpad/synth/recapture.py), ranges in [`configs/synth.yaml`](configs/synth.yaml)). It simulates:
+- the display: resolution, tone, gamut and sub-pixel layout;
+- glare, reflections and dust;
+- the phone's tilt and lens;
+- the camera pipeline: Bayer mosaic, noise, demosaicing, denoising, sharpening and JPEG.
+
+Moiré emerges from the sub-pixel grid being sampled by the camera grid, rather than being drawn on. Camera-only bona fide controls go through the camera stage with no screen, so phone processing is not a cue for "attack".
+
+[`notebooks/Recapture.ipynb`](notebooks/Recapture.ipynb) measures what recapture changes on the 6 dev twin pairs only and compares simulated recaptures of those twins with the real attacks. It also documents the calibration and the remaining gaps. Prerequisites: `screenpad cache`, `screenpad synth --splits dev --variants 5 --set synth.camera_only_frac=1.0`.
 
 ## Data
 

@@ -18,12 +18,12 @@ from tqdm import tqdm
 from .io import load_image
 from .preprocess import FaceCropper
 
-_INFO_COLS = ("face_found", "n_faces", "det_score", "face_w", "roll_deg", "side", "resample_ratio", "shifted", "shrunk")
+_INFO_COLS = ("face_found", "n_faces", "det_score", "face_w", "roll_deg", "side", "resample_ratio", "shifted", "shrunk", "angle_deg")
 
 
-def build_crops(splits: pd.DataFrame, root: str | Path, crops: dict[str, float], size: int, det_size: int) -> dict[str, dict]:
+def build_crops(splits: pd.DataFrame, root: str | Path, crops: dict[str, float], size: int, det_size: int, align: bool = False) -> dict[str, dict]:
     """Crop every image in `splits` once per named crop (one face detection per image). Returns {name: cache dict}."""
-    cropper = FaceCropper(det_size=det_size)
+    cropper = FaceCropper(det_size=det_size, align=align)
     n = len(splits)
     images = {name: np.empty((n, size, size, 3), np.uint8) for name in crops}
     info = {name: {c: [] for c in _INFO_COLS} for name in crops}
@@ -38,7 +38,7 @@ def build_crops(splits: pd.DataFrame, root: str | Path, crops: dict[str, float],
     meta["label"] = splits["label"].to_numpy(np.int8)
     return {
         name: {"images": images[name], **meta, **{f"info_{c}": np.asarray(v) for c, v in info[name].items()},
-               "k": np.float32(k), "size": np.int32(size)}
+               "k": np.float32(k), "size": np.int32(size), "align": np.bool_(align)}
         for name, k in crops.items()
     }
 
@@ -57,7 +57,7 @@ def verify_cache(path: str | Path, root: str | Path, det_size: int) -> int:
     """Recompute every crop from the raw files and require byte-exact equality with the saved cache. Returns images checked."""
     c = load_cache(path)
     k, size = float(c["k"]), int(c["size"])
-    cropper = FaceCropper(det_size=det_size)
+    cropper = FaceCropper(det_size=det_size, align=bool(c.get("align", False)))
     bad = []
     for i, p in enumerate(tqdm(c["path"], desc="verify", mininterval=10)):
         crop, _ = cropper(np.asarray(load_image(Path(root) / p)), k, size)

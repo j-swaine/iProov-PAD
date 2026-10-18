@@ -13,6 +13,9 @@ Commands
     audit           run the leakage checks on the split table
     eda             face detection table, attack/twin grid and spectra
     baseline-minifasnet   off-the-shelf anti-spoofing model, native and context-matched
+    synth           synthetic screen-recapture attacks (and camera-only controls) as crop caches
+    synth-gallery   contact sheets of synthetic attacks next to real crops, for visual checking
+    probe           frozen-backbone linear probes: train on synthetic attacks, measure on real dev attacks
 
 Examples
 --------
@@ -99,6 +102,24 @@ def build_parser() -> argparse.ArgumentParser:
     _common(sp)
     sp.add_argument("--splits", default="dev,val", help="comma-separated splits to score (default: dev,val)")
     sp.set_defaults(func=_lazy("screenpad.baselines.cli", "cmd_minifasnet"))
+
+    sp = sub.add_parser("synth", help="synthetic recapture attacks as crop caches")
+    _common(sp)
+    sp.add_argument("--splits", default=None, help="comma-separated source splits (default: synth.splits; never test)")
+    sp.add_argument("--variants", type=int, default=None, help="synthetic attacks per source image (default: synth.variants)")
+    sp.add_argument("--push", action="store_true", help="upload the caches to the HF dataset repo")
+    sp.set_defaults(func=_lazy("screenpad.synth.cli", "cmd_synth"))
+
+    sp = sub.add_parser("synth-gallery", help="contact sheets of synthetic vs real crops")
+    _common(sp)
+    sp.add_argument("--n", type=int, default=24, help="train identities to show")
+    sp.set_defaults(func=_lazy("screenpad.synth.gallery", "cmd_gallery"))
+
+    sp = sub.add_parser("probe", help="frozen-backbone linear probes")
+    _common(sp)
+    sp.add_argument("--backbones", default="handcrafted,dinov2_s224,dinov2_b224,dinov2_b392,clip_b16")
+    sp.add_argument("--crops", default="tight,loose")
+    sp.set_defaults(func=_lazy("screenpad.probes.cli", "cmd_probe"))
 
     sp = sub.add_parser("eda", help="face detection table, attack/twin grid and spectra")
     _common(sp)

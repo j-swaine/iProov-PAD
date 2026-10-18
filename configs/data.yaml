@@ -7,7 +7,7 @@ data:
   # Raw data as one tar of the original files (byte-identical) plus a sha256sum listing.
   hf_archive: raw/screenpad-raw.tar
   hf_checksums: raw/screenpad-raw.sha256
-  # Preprocessed crops (`screenpad cache`), one .npz per crop variant: crops_<name>_<size>.npz
+  # Preprocessed crops (`screenpad cache`), one .npz per crop variant: crops_<name>_<size>[_aligned].npz
   cache_dir: ${output_dir}/cache
   hf_cache_dir: cache
 
@@ -30,6 +30,10 @@ preprocess:
   # 5th percentile), so k is capped at 1.25: a wider crop would run past the displayed image in
   # attacks onto bezel/background that bona fide images can never contain.
   det_size: 640  # long side the detector sees
+  # Rotate each crop so the eye line is level (YuNet eye landmarks). Roll does not differ between
+  # classes in the supplied data (median |roll| 1.6 deg bona fide, 1.4 deg attack); aligning gives every
+  # model the same canonical input, and training adds small random rotations back (CropJitter) for robustness.
+  align: true
   size: 384  # stored crop size; training can resize down from this
   crops:
     tight: 1.0
