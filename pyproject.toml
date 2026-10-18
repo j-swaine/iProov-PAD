@@ -20,6 +20,7 @@ dependencies = [
     "matplotlib>=3.7",
     "tqdm>=4.65",
     "huggingface_hub>=0.24",
+    "threadpoolctl>=3.7.0",
 ]
 
 [project.optional-dependencies]
@@ -30,10 +31,19 @@ torch = ["torch>=2.3", "torchvision>=0.18", "timm>=1.0"]
 screenpad = "screenpad.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "ipykernel>=6.29", "seaborn>=0.13"]
+dev = [
+    "pytest>=8.0",
+    "ipykernel>=6.29",
+    "seaborn>=0.13",
+    "nbconvert>=7.17.2",
+    "nbformat>=5.11.1",
+]
 
 [tool.setuptools.packages.find]
 include = ["screenpad*"]
+
+[tool.setuptools.package-data]
+screenpad = ["assets/*.onnx", "assets/LICENSE-*"]
 
 # On Linux (the Docker image) pull CPU-only torch wheels, which are ~10x smaller than the
 # default CUDA ones. macOS wheels from PyPI are already CPU/MPS-only.

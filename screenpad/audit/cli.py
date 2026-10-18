@@ -24,3 +24,4 @@ def cmd_audit(args) -> None:
             log.info("ok   %s", name)
     if failed:
         sys.exit(1)
+

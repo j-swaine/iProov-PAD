@@ -4,3 +4,6 @@ deterministic: false
 device: auto
 output_dir: results
 run_group: default
+# CPU cap for local runs (BLAS/OpenMP threads, sklearn/joblib workers, OpenCV, torch).
+# Leaves the rest of the machine free; raise it on Colab with --set num_threads=...
+num_threads: 6

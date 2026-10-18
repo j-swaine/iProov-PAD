@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .config import Config, load_config, CONFIG_DIR
-from .utils import seed_everything, get_logger, ensure_dir, timestamp
+from .utils import seed_everything, get_logger, ensure_dir, timestamp, limit_threads
 
 
 def _make_cfg(args, model=None, extra_files=()) -> Config:
@@ -27,8 +27,9 @@ def _make_cfg(args, model=None, extra_files=()) -> Config:
 
 
 def _setup(cfg: Config, logfile=None):
-    """Seed RNGs and build the run logger. Device resolution is left to the commands that need torch."""
+    """Seed RNGs, cap CPU threads, and build the run logger. Device resolution is left to the commands that need torch."""
     seed_everything(int(cfg.seed), bool(cfg.get("deterministic", False)))
+    limit_threads(int(cfg.get("num_threads", 6)))
     return get_logger("screenpad", logfile=logfile)
 
 

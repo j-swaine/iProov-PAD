@@ -4,12 +4,33 @@ data:
   manifest: ${output_dir}/manifest.csv
   splits: ${output_dir}/splits.csv
   hf_repo: Jamie1701/screenpad-data
+  # Raw data as one tar of the original files (byte-identical) plus a sha256sum listing.
+  hf_archive: raw/screenpad-raw.tar
+  hf_checksums: raw/screenpad-raw.sha256
+  # Preprocessed crops (`screenpad cache`), one .npz per crop variant: crops_<name>_<size>.npz
+  cache_dir: ${output_dir}/cache
+  hf_cache_dir: cache
 
 split:
-  # Every real attack goes to test together with its bona fide twin (same image ID).
+  # Real attacks (each with its bona fide twin, same image ID) are divided between a dev set,
+  # used for simulator calibration and model selection, and a test set used once at the end.
+  dev_attacks: 6
+  # The other real attacks go to test together with their twins.
   # On top of the twins, this many unpaired bona fide images are also held out for test,
-  # so test BPCER is estimated on more than 23 images.
+  # so test BPCER is estimated on more than just the twins.
   test_extra_bonafide: 177
   # Fraction of the remaining bona fide IDs used for validation (synthetic attacks for
   # val are generated from these only).
   val_frac: 0.15
+
+preprocess:
+  # Face-centred square crops (screenpad/data/preprocess.py). Each named crop is k x the detected
+  # face box; both variants are kept so models can be trained on each.
+  # The bona fide images are FFHQ crops that only fit ~1.4x the face box (median; 1.27x at the
+  # 5th percentile), so k is capped at 1.25: a wider crop would run past the displayed image in
+  # attacks onto bezel/background that bona fide images can never contain.
+  det_size: 640  # long side the detector sees
+  size: 384  # stored crop size; training can resize down from this
+  crops:
+    tight: 1.0
+    loose: 1.25

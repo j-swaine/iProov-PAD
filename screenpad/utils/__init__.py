@@ -4,6 +4,7 @@ from .seed import seed_everything
 from .device import resolve_device, resolve_num_workers
 from .logging import get_logger
 from .io import ensure_dir, save_json, load_json, timestamp
+from .threads import limit_threads
 
 __all__ = [
     "seed_everything",
@@ -14,4 +15,5 @@ __all__ = [
     "save_json",
     "load_json",
     "timestamp",
+    "limit_threads",
 ]

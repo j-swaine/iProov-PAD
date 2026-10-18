@@ -6,10 +6,13 @@ Run as ``screenpad <command>`` or ``python -m screenpad <command>``.
 
 Commands
 --------
-    pull-data       download the dataset from the Hugging Face Hub
+    pull-data       download the dataset (raw tar, or --cache for crops) from the Hugging Face Hub
+    cache           build + verify the preprocessed face-crop caches (--push to upload)
     manifest        scan the data folder and write the per-image manifest
     splits          assign every image ID to train/val/test
     audit           run the leakage checks on the split table
+    eda             face detection table, attack/twin grid and spectra
+    baseline-minifasnet   off-the-shelf anti-spoofing model, native and context-matched
 
 Examples
 --------
@@ -72,6 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("pull-data", help="download the dataset from the HF Hub")
     _common(sp)
+    sp.add_argument("--cache", action="store_true", help="download the preprocessed crop caches instead of the raw tar")
     sp.set_defaults(func=_lazy("screenpad.data.cli", "cmd_pull"))
 
     sp = sub.add_parser("manifest", help="write the per-image manifest")
@@ -85,6 +89,20 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("audit", help="leakage checks on the split table")
     _common(sp)
     sp.set_defaults(func=_lazy("screenpad.audit.cli", "cmd_audit"))
+
+    sp = sub.add_parser("cache", help="build + verify the preprocessed crop caches")
+    _common(sp)
+    sp.add_argument("--push", action="store_true", help="upload the caches to the HF dataset repo")
+    sp.set_defaults(func=_lazy("screenpad.data.cli", "cmd_cache"))
+
+    sp = sub.add_parser("baseline-minifasnet", help="off-the-shelf MiniFASNet (Apache-2.0) scores and metrics")
+    _common(sp)
+    sp.add_argument("--splits", default="dev,val", help="comma-separated splits to score (default: dev,val)")
+    sp.set_defaults(func=_lazy("screenpad.baselines.cli", "cmd_minifasnet"))
+
+    sp = sub.add_parser("eda", help="face detection table, attack/twin grid and spectra")
+    _common(sp)
+    sp.set_defaults(func=_lazy("screenpad.eda.cli", "cmd_eda"))
 
     return p
 

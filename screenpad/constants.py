@@ -12,4 +12,4 @@ CLASS_FOLDERS = {"Bonafide": BONAFIDE, "Screens": ATTACK}
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff")
 
-SPLITS = ("train", "val", "test")
+SPLITS = ("train", "val", "dev", "test")

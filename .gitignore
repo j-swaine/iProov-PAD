@@ -4,7 +4,7 @@
 /artefacts/*
 !/artefacts/.gitkeep
 
-.venv
+.venv*
 .venv.nosync/
 __pycache__/
 *.pyc

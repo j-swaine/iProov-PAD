@@ -17,20 +17,30 @@ def ids_crossing_splits(splits: pd.DataFrame) -> pd.DataFrame:
     return splits[splits["id"].isin(n[n > 1].index)]
 
 
-def real_attacks_outside_test(splits: pd.DataFrame) -> pd.DataFrame:
-    """Real attacks assigned to train or val (they must only ever be test)."""
-    return splits[(splits["label"] == ATTACK) & (splits["split"] != "test")]
+_REAL_ATTACK_SPLITS = ("dev", "test")
 
 
-def twins_outside_test(splits: pd.DataFrame) -> pd.DataFrame:
-    """Bona fide twins of real attacks that are not in test."""
-    return splits[splits["paired"] & (splits["split"] != "test")]
+def real_attacks_in_training(splits: pd.DataFrame) -> pd.DataFrame:
+    """Real attacks assigned to train or val (they may only be dev or test)."""
+    return splits[(splits["label"] == ATTACK) & ~splits["split"].isin(_REAL_ATTACK_SPLITS)]
+
+
+def twins_in_training(splits: pd.DataFrame) -> pd.DataFrame:
+    """Bona fide twins of real attacks assigned to train or val."""
+    return splits[splits["paired"] & ~splits["split"].isin(_REAL_ATTACK_SPLITS)]
+
+
+def dev_without_both_classes(splits: pd.DataFrame) -> pd.DataFrame:
+    """Dev must hold only twin pairs: any dev ID missing either class is an error."""
+    dev = splits[splits["split"] == "dev"]
+    return dev[~dev["paired"]]
 
 
 CHECKS = {
     "ids_crossing_splits": ids_crossing_splits,
-    "real_attacks_outside_test": real_attacks_outside_test,
-    "twins_outside_test": twins_outside_test,
+    "real_attacks_in_training": real_attacks_in_training,
+    "twins_in_training": twins_in_training,
+    "dev_without_both_classes": dev_without_both_classes,
 }
 
 

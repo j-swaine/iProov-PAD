@@ -26,17 +26,27 @@ Common commands:
 ## Pipeline
 
 ```bash
-screenpad pull-data   # download data from the private HF dataset (needs `hf auth login`)
+screenpad pull-data   # download + SHA-256-verify the data tar from the private HF dataset (needs `hf auth login`)
 screenpad manifest    # per-image table: id, label, size, ICC/EXIF flags, paired?
 screenpad splits      # assign IDs to train/val/test (all real attacks + their twins -> test)
 screenpad audit       # leakage checks on the split
+screenpad eda         # face detections, attack/twin grid, power spectra -> results/eda/
+screenpad cache       # face-centred crops (tight k=1.0, loose k=1.25) at 384px -> results/cache/*.npz,
+                      # each verified byte-exact against a fresh recompute (--push uploads to HF)
+screenpad pull-data --cache   # fetch the crop caches instead of the raw data
+# off-the-shelf comparison (needs OpenCV 4 for its Caffe face detector; layered, project env untouched):
+uv run --with 'opencv-python-headless>=4.10,<5' screenpad baseline-minifasnet --splits dev,val
 ```
 
 Every command takes `--set key.sub=value` overrides and `--config extra.yaml` on top of `configs/*.yaml`.
 
+## EDA
+
+[`notebooks/EDA.ipynb`](notebooks/EDA.ipynb) - class-level distributions and separability of every salient feature (file metadata, face geometry, pixel and spectral statistics), the metadata shortcut demonstration (logistic regression), and what survives cropping. Run `screenpad eda` and `screenpad cache` first; re-execute with `uv run jupyter nbconvert --to notebook --execute --inplace notebooks/EDA.ipynb`.
+
 ## Data
 
-`DATA/test/data/{Bonafide,Screens}/` locally (not in git); a private copy lives at `Jamie1701/screenpad-data` on the HF Hub for Colab.
+`DATA/test/data/{Bonafide,Screens}/` locally (not in git); a private copy lives at `Jamie1701/screenpad-data` on the HF Hub as one byte-identical tar plus per-file SHA-256s (`scripts/push_data_to_hf.py` builds it; `screenpad pull-data` downloads, extracts and verifies it).
 
 ## GPU runs (Colab CLI)
 
@@ -49,3 +59,7 @@ scripts/colab_job.sh run splits       # any screenpad command
 scripts/colab_job.sh get content/screenpad/results/x.csv ./x.csv
 scripts/colab_job.sh down             # always stop the session afterwards
 ```
+
+## Third-party components
+
+Face detection uses OpenCV's YuNet model, bundled in `screenpad/assets/`. It was chosen for its **MIT licence** (commercial use permitted); see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for every bundled model, its licence, and the alternatives rejected on licence grounds.
