@@ -1,0 +1,3 @@
+# DINOv2-base, loose crops, 392 px (patch-14 multiple nearest the stored 384): does keeping fine texture help when fine-tuned?
+train: {backbone: dinov2_b, crop: loose, input_size: 392, batch_size: 48, epochs: 20}
+# Batch size fixed from the L4 probe (results/bench_L4/): throughput is flat across batch sizes, so 64 (48 where 64 does not fit) is used for every run; lr scales with batch / 64.

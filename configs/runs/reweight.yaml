@@ -1,0 +1,9 @@
+# Resample-ratio reweighting (2026-10-19): A's recipe with p_original 0.5 (F) and 0 (G), 3 seeds each. A itself is p_original 1.
+pull_data: true
+jobs:
+  - {name: F_dinov2b_loose224_porig50_s42, config: configs/runs/F_dinov2b_loose224_porig50.yaml, set: [seed=42]}
+  - {name: G_dinov2b_loose224_porig0_s42, config: configs/runs/G_dinov2b_loose224_porig0.yaml, set: [seed=42]}
+  - {name: F_dinov2b_loose224_porig50_s43, config: configs/runs/F_dinov2b_loose224_porig50.yaml, set: [seed=43]}
+  - {name: G_dinov2b_loose224_porig0_s43, config: configs/runs/G_dinov2b_loose224_porig0.yaml, set: [seed=43]}
+  - {name: F_dinov2b_loose224_porig50_s44, config: configs/runs/F_dinov2b_loose224_porig50.yaml, set: [seed=44]}
+  - {name: G_dinov2b_loose224_porig0_s44, config: configs/runs/G_dinov2b_loose224_porig0.yaml, set: [seed=44]}

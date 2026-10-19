@@ -1,0 +1,20 @@
+# Overnight sweep 2026-10-19: 5 configurations x 3 seeds, queued on parallel Colab L4 sessions (scripts/orchestrate.py).
+# Order: every configuration once (seed 42) first, so a partial night still covers all of them; then seeds 43 and 44.
+# The slow 392-px run (C, ~18 min) is spread out so both slots stay busy.
+pull_data: true
+jobs:
+  - {name: A_dinov2b_loose224_s42, config: configs/runs/A_dinov2b_loose224.yaml, set: [seed=42]}
+  - {name: C_dinov2b_loose392_s42, config: configs/runs/C_dinov2b_loose392.yaml, set: [seed=42]}
+  - {name: D_clip_loose224_s42, config: configs/runs/D_clip_loose224.yaml, set: [seed=42]}
+  - {name: E_convnext_loose384_s42, config: configs/runs/E_convnext_loose384.yaml, set: [seed=42]}
+  - {name: B_dinov2b_tight224_s42, config: configs/runs/B_dinov2b_tight224.yaml, set: [seed=42]}
+  - {name: A_dinov2b_loose224_s43, config: configs/runs/A_dinov2b_loose224.yaml, set: [seed=43]}
+  - {name: C_dinov2b_loose392_s43, config: configs/runs/C_dinov2b_loose392.yaml, set: [seed=43]}
+  - {name: D_clip_loose224_s43, config: configs/runs/D_clip_loose224.yaml, set: [seed=43]}
+  - {name: E_convnext_loose384_s43, config: configs/runs/E_convnext_loose384.yaml, set: [seed=43]}
+  - {name: B_dinov2b_tight224_s43, config: configs/runs/B_dinov2b_tight224.yaml, set: [seed=43]}
+  - {name: A_dinov2b_loose224_s44, config: configs/runs/A_dinov2b_loose224.yaml, set: [seed=44]}
+  - {name: C_dinov2b_loose392_s44, config: configs/runs/C_dinov2b_loose392.yaml, set: [seed=44]}
+  - {name: D_clip_loose224_s44, config: configs/runs/D_clip_loose224.yaml, set: [seed=44]}
+  - {name: E_convnext_loose384_s44, config: configs/runs/E_convnext_loose384.yaml, set: [seed=44]}
+  - {name: B_dinov2b_tight224_s44, config: configs/runs/B_dinov2b_tight224.yaml, set: [seed=44]}

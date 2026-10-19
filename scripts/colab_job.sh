@@ -49,10 +49,12 @@ push() {
     version="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo "no-commit")"
     [[ -n "$(git -C "$ROOT" status --porcelain)" ]] && version="$version-dirty"
     echo "$version" > "$tmp/SOURCE_VERSION"
+    # The exact source: diff against HEAD plus every untracked file, so a run made from an uncommitted tree can be reproduced.
+    (cd "$ROOT" && git diff HEAD && git ls-files -o --exclude-standard -z | xargs -0 -I{} git diff --no-index /dev/null {} || true) > "$tmp/SOURCE_DIFF.patch"
     # bsdtar applies -C before reading -T, so append SOURCE_VERSION in a second pass, then compress.
     export COPYFILE_DISABLE=1
     (cd "$ROOT" && git ls-files -co --exclude-standard -z | tar --no-mac-metadata --null -cf "$tmp/screenpad.tar" -T -)
-    tar --no-mac-metadata -rf "$tmp/screenpad.tar" -C "$tmp" SOURCE_VERSION
+    tar --no-mac-metadata -rf "$tmp/screenpad.tar" -C "$tmp" SOURCE_VERSION SOURCE_DIFF.patch
     gzip "$tmp/screenpad.tar"
     # Upload paths are relative to the VM's filesystem root, not /content.
     colab upload -s "$SESSION" "$tmp/screenpad.tar.gz" content/screenpad.tar.gz

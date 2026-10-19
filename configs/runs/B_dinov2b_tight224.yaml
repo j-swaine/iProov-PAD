@@ -1,0 +1,3 @@
+# DINOv2-base, tight crops, 224 px: does the context in the loose crop matter once fine-tuned?
+train: {backbone: dinov2_b, crop: tight, input_size: 224, batch_size: 64, epochs: 20}
+# Batch size fixed from the L4 probe (results/bench_L4/): throughput is flat across batch sizes, so 64 (48 where 64 does not fit) is used for every run; lr scales with batch / 64.

@@ -1,0 +1,5 @@
+# Orchestrator smoke test: one short session, a stand-in job that sleeps, uploads and verifies a tiny run folder.
+pull_data: false
+jobs:
+  - name: _smoke_orchestrator
+    smoke: 90

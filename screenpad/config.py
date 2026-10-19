@@ -182,7 +182,7 @@ def load_config(
 ) -> Config:
     """Build the fully-resolved config for a run. Returns a dict with attribute access via a Config object."""
     merged: Dict[str, Any] = {}
-    for name in ("default.yaml", "data.yaml", "synth.yaml"):
+    for name in ("default.yaml", "data.yaml", "synth.yaml", "train.yaml", "ensemble.yaml"):
         path = config_dir / name
         if path.exists():
             merged = deep_merge(merged, load_yaml(path))

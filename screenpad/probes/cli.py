@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -44,16 +45,17 @@ def cmd_probe(args) -> None:
     for crop in args.crops.split(","):
         images, table = load_sets(cfg.data.cache_dir, crop, size)
         m = set_masks(table)
+        digest = hashlib.sha1(images.tobytes()).hexdigest()  # features are reused only for byte-identical inputs
         log.info("%s: train %s, val %s, dev %s", crop, table[m["train"]].kind.value_counts().to_dict(),
                  table[m["val"]].kind.value_counts().to_dict(), table[m["dev"]].kind.value_counts().to_dict())
         for bb in args.backbones.split(","):
-            fpath = feat_dir / f"{bb}_{crop}_{size}.npy"
-            if fpath.exists():
-                X = np.load(fpath)
+            fpath = feat_dir / f"{bb}_{crop}_{size}.npz"
+            if fpath.exists() and str(np.load(fpath)["digest"]) == digest:
+                X = np.load(fpath)["X"]
             else:
                 log.info("extracting %s on %s crops (%d images, device %s)", bb, crop, len(images), device)
                 X = extract(bb, images, device)
-                np.save(fpath, X)
+                np.savez(fpath, X=X, digest=digest)
             y = table.label.to_numpy()
             best = None
             for C in C_GRID:

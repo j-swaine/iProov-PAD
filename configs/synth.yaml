@@ -23,8 +23,8 @@ synth:
     glare_sigma: [0.1, 0.5]
     p_dust: 0.3
     max_dust: 40
-    tilt: [0.0, 0.06]  # dev homographies: opposite sides differ by up to ~15%
-    rotation: [-6.0, 6.0]
+    tilt: [0.0, 0.04]  # dev homographies: opposite sides differ by 1-17% (median 2%)
+    rotation: [-3.0, 3.0]  # alignment removes roll anyway; this only varies the grid's angle to the sensor
     blur: [0.8, 2.2]  # camera px; the main control on how much grid survives the crop. Dev Samsung pairs are visibly softer than iPhone ones
     vignette: [0.0, 0.25]
     camera:
@@ -38,8 +38,12 @@ synth:
       sharpen_amount: [0.5, 2.5]
       sharpen_radius: [0.7, 2.0]
       jpeg_quality: [75, 97]
-  # Bona fide control: this fraction of bona fide training images also goes through the camera
-  # stage alone (no screen), so "processed by a phone camera" is not a cue for "attack".
-  camera_only_frac: 0.5
-  variants: 2  # synthetic attacks per bona fide source image
+  # Pool generated per bona fide source image. Every face gets camera-only controls (camera stage
+  # alone, no screen, labelled bona fide), so "processed by a phone camera" is never a cue for "attack".
+  # Training draws, per face per epoch, the original + 1 camera-only (bona fide) and 2 attacks:
+  # 1:1 classes with every face equally represented in both. The pool sizes (4 and 2) give each face
+  # different simulations across epochs; they are a pragmatic choice bounded by generation time
+  # (~1.5 renders/s on 6 cores).
+  attack_variants: 4
+  camera_variants: 2
   splits: [train, val]

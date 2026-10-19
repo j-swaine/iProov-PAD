@@ -1,0 +1,4 @@
+# PatchCore on a Colab L4: the Mac (16 GB) swapped heavily holding ~500k bona fide patch features plus the image pool.
+pull_data: true
+jobs:
+  - {name: patchcore_loose224, cmd: [screenpad, oneclass, --members, patchcore, --run-name, patchcore_loose224, --push]}

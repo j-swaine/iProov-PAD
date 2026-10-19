@@ -18,7 +18,7 @@ def cache_name(name: str, size: int, align: bool = False) -> str:
 def cmd_pull(args) -> None:
     """Download the raw-data tar from the HF Hub, extract it into `data.root`, and verify every file's SHA-256.
 
-    With --cache, download the preprocessed crop caches into `data.cache_dir` instead.
+    With --cache, download the preprocessed crop caches and the synthetic train/val pools into `data.cache_dir` instead.
     """
     from huggingface_hub import hf_hub_download
 
@@ -28,10 +28,12 @@ def cmd_pull(args) -> None:
     log = _setup(cfg)
     get = lambda f, **kw: hf_hub_download(repo_id=cfg.data.hf_repo, repo_type="dataset", filename=f, **kw)
     if args.cache:
+        size = int(cfg.preprocess.size)
         for name in cfg.preprocess.crops:
-            f = cache_name(name, int(cfg.preprocess.size), bool(cfg.preprocess.align))
-            get(f"{cfg.data.hf_cache_dir}/{f}", local_dir=Path(cfg.data.cache_dir).parent)
-            log.info("pulled %s -> %s", f, cfg.data.cache_dir)
+            # real crops plus the synthetic train/val pool (`screenpad synth`), everything training reads
+            for f in (cache_name(name, size, bool(cfg.preprocess.align)), f"synth_{name}_{size}_{'-'.join(cfg.synth.splits)}.npz", f"shrink_{name}_{size}_aligned.npz"):
+                get(f"{cfg.data.hf_cache_dir}/{f}", local_dir=Path(cfg.data.cache_dir).parent)
+                log.info("pulled %s -> %s", f, cfg.data.cache_dir)
         return
     tar_path = get(cfg.data.hf_archive)
     checksums = read_checksums(get(cfg.data.hf_checksums))

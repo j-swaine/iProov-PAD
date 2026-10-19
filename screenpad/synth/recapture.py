@@ -167,21 +167,18 @@ def _subpixel_masks(u: np.ndarray, v: np.ndarray, iu: np.ndarray, iv: np.ndarray
 
 
 def _camera_homography(cw: int, ch: int, sw: int, sh: int, p: RecaptureParams, rng: np.random.Generator) -> np.ndarray:
-    """Map camera pixel coordinates to screen pixel coordinates: scale, small rotation and perspective, zoomed in so the frame stays inside the screen."""
+    """Map camera pixel coordinates to screen pixel coordinates: scale, small rotation and perspective.
+
+    The frame is not zoomed in to stay on the screen: like the real attack files (cropped by hand to about the displayed image), a tilted frame shows thin slivers of the dark screen border at some corners. Zooming in instead would shrink the margin around the face and make synthetic loose crops more tightly framed than any real attack.
+    """
     corners = np.float32([[0, 0], [sw, 0], [sw, sh], [0, sh]])
     d = rng.uniform(-1, 1, (4, 2)).astype(np.float32) * p.tilt * np.float32([sw, sh])
     c = corners.mean(0)
     t = np.radians(p.rotation)
     R = np.float32([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
     quad = (corners - c) @ R.T + c + d
-    # shrink the quad about its centre until it lies inside the screen, so no off-screen area is seen
-    inner = quad.copy()
-    for _ in range(40):
-        if inner.min() >= 0 and (inner[:, 0] <= sw).all() and (inner[:, 1] <= sh).all():
-            break
-        inner = c + (inner - c) * 0.97
     cam = np.float32([[0, 0], [cw, 0], [cw, ch], [0, ch]])
-    return cv2.getPerspectiveTransform(cam, inner)
+    return cv2.getPerspectiveTransform(cam, quad)
 
 
 def _environment(lin: np.ndarray, p: RecaptureParams, rng: np.random.Generator) -> np.ndarray:
@@ -223,7 +220,7 @@ def render_screen(src: np.ndarray, p: RecaptureParams, rng: np.random.Generator)
         u = (H[0, 0] * X + H[0, 1] * Y + H[0, 2]) / den
         v = (H[1, 0] * X + H[1, 1] * Y + H[1, 2]) / den
         iu, iv = np.floor(u), np.floor(v)
-        px = cv2.remap(fb, iu.astype(np.float32), iv.astype(np.float32), cv2.INTER_NEAREST, borderMode=cv2.BORDER_REPLICATE)
+        px = cv2.remap(fb, iu.astype(np.float32), iv.astype(np.float32), cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))  # off-screen: black border
         em = px * _subpixel_masks(u, v, iu, iv, p)
         out[y0:y1] = cv2.resize(em, (cw, y1 - y0), interpolation=cv2.INTER_AREA) if ss > 1 else em
     out = _environment(out, p, rng)

@@ -27,7 +27,7 @@ def cmd_synth(args) -> None:
     size = int(cfg.preprocess.size)
     caches, params = generate(
         splits, cfg.data.root, cfg.synth.ranges, dict(cfg.preprocess.crops), size, int(cfg.preprocess.det_size),
-        bool(cfg.preprocess.align), int(cfg.seed), int(args.variants or cfg.synth.variants), float(cfg.synth.camera_only_frac),
+        bool(cfg.preprocess.align), int(cfg.seed), int(args.variants or cfg.synth.attack_variants), int(cfg.synth.camera_variants),
         int(cfg.num_threads),
     )
     out = Path(cfg.data.cache_dir)

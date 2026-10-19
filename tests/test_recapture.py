@@ -58,3 +58,15 @@ def test_aligned_crop_levels_the_eyes():
     assert abs(left - right) < 1.0 and abs(info.angle_deg - 15) < 1e-6
     jittered, _ = FaceCropper(align=True).crop(img, det, 1.0, 160, CropJitter(angle=5.0))
     assert not np.array_equal(jittered, out)
+
+
+def test_shrunk_rotated_crop_keeps_content():
+    """A crop shrunk to fit puts its edge exactly on the image border; float error there must not wrap the slice."""
+    yy, xx = np.mgrid[0:3048, 0:3048]
+    img = np.repeat(((xx + yy) * 255 // 6096).astype(np.uint8)[..., None], 3, axis=2)  # diagonal ramp
+    lm = np.zeros((5, 2))
+    lm[0], lm[1] = [1089.8947385787965, 1443.0667133331299], [1892.3083328247071, 1382.0108470916748]
+    # exact values from a synthetic attack where this happened (its loose crop came out as one smeared row)
+    det = Detection(box=np.array([683.8126939773559, 624.4001140594482, 1678.7322704315186, 2287.2534118652343]), landmarks=lm, score=1.0, n_faces=1)
+    out, info = FaceCropper(align=True).crop(img, det, 1.25, 384)
+    assert info.shrunk and out[:, 0, 0].std() > 20 and out[0, :, 0].std() > 20  # varies down and across, not one smeared row

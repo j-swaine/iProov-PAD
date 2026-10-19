@@ -1,0 +1,6 @@
+# End-to-end dry run before the sweep: the full training path (fit, evaluate, shortcut checks, push, verify) for 2 epochs on CUDA.
+pull_data: true
+jobs:
+  - name: _dryrun_A
+    config: configs/runs/A_dinov2b_loose224.yaml
+    set: [train.epochs=2]

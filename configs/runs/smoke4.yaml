@@ -1,0 +1,8 @@
+# Orchestrator smoke test: 4 parallel sessions, 5 stand-in jobs (one slot must take a second job).
+pull_data: false
+jobs:
+  - {name: _smoke4_a, smoke: 60}
+  - {name: _smoke4_b, smoke: 60}
+  - {name: _smoke4_c, smoke: 60}
+  - {name: _smoke4_d, smoke: 60}
+  - {name: _smoke4_e, smoke: 30}

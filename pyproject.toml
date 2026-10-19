@@ -37,6 +37,7 @@ dev = [
     "seaborn>=0.13",
     "nbconvert>=7.17.2",
     "nbformat>=5.11.1",
+    "mlflow>=2.14",
 ]
 
 [tool.setuptools.packages.find]

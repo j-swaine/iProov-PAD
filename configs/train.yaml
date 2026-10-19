@@ -1,0 +1,44 @@
+train:
+  # One fine-tuning run (screenpad/train). Runs in the sweep override these via configs/runs/<name>.yaml.
+  name: dev
+  backbone: dinov2_b  # key of screenpad.train.model.BACKBONES
+  crop: loose  # tight | loose (which crop cache)
+  input_size: 224  # model input; the 384 crops are resized (area) after augmentation
+  epochs: 10  # fixed budget: the final checkpoint is the default choice (synthetic val can mislead, see probes)
+  batch_size: 64  # overridden by the batch-size probe result when `auto_batch` is true
+  auto_batch: false
+  lr: 0.0001  # peak learning rate for the head and last block, scaled linearly with batch_size / 64
+  layer_decay: 0.75  # each earlier block's learning rate is this times the next one's
+  weight_decay: 0.05
+  warmup_epochs: 1
+  min_lr_ratio: 0.01  # cosine decays to lr * this
+  grad_clip: 1.0
+  label_smoothing: 0.0
+  amp: true  # bf16 autocast on CUDA; ignored on MPS/CPU
+  channels_last: true  # only applied to convolutional backbones
+  compile: false
+  eval_every: 1
+  # Augmentation, on the GPU, identical for both classes (screenpad/train/augment.py)
+  augment:
+    p_flip: 0.5
+    p_affine: 0.5
+    max_rotate: 5.0  # degrees
+    max_shift: 0.05  # fraction of the side
+    max_log_scale: 0.1
+    p_rescale: 0.5
+    max_rescale: 4.0
+    p_colour: 0.8
+    brightness: 0.15
+    contrast: 0.15
+    saturation: 0.15
+    channel_gain: 0.05
+    p_grey: 0.2
+  # Per face per epoch: original + `camera_per_face` camera-only (bona fide) and `attacks_per_face` attacks
+  camera_per_face: 1
+  attacks_per_face: 2
+  # Resample-ratio reweighting: probability a face's original crop is used in an epoch (else a second camera-only control).
+  # Originals (~2.4x downsampled) are the only training images below ~3x; 0 matches the bona fide ratio distribution to the attacks'.
+  p_original: 1.0
+  # Hugging Face run storage (private model repo)
+  hf_runs_repo: Jamie1701/screenpad-runs
+  runs_dir: ${output_dir}/runs

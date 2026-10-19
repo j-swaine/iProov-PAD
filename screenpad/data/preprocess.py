@@ -145,7 +145,7 @@ def _rotated_crop(rgb: np.ndarray, det: Detection | None, cx: float, cy: float, 
     cx, cy = nx, ny
     # area-downsample the bounding region first, so the rotation below works at (about) the output scale
     ratio = side / size
-    x0, y0 = int(np.floor(cx - half)), int(np.floor(cy - half))
+    x0, y0 = max(0, int(np.floor(cx - half))), max(0, int(np.floor(cy - half)))  # float error can put a fitted edge at -1e-9, and a negative start would wrap
     x1, y1 = min(w, int(np.ceil(cx + half)) + 1), min(h, int(np.ceil(cy + half)) + 1)
     region = rgb[y0:y1, x0:x1]
     f = 1.0

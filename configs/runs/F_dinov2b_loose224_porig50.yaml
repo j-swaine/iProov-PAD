@@ -1,0 +1,2 @@
+# A with resample-ratio reweighting: each face's original crop is used in half the epochs (else a second camera-only control).
+train: {backbone: dinov2_b, crop: loose, input_size: 224, batch_size: 64, epochs: 20, p_original: 0.5}

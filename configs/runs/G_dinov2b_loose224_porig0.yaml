@@ -1,0 +1,2 @@
+# A with full resample-ratio reweighting: no original crops in training, bona fide = camera-only controls (ratio distribution matches the attacks').
+train: {backbone: dinov2_b, crop: loose, input_size: 224, batch_size: 64, epochs: 20, p_original: 0.0}
