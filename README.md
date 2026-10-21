@@ -1,114 +1,131 @@
 # screenpad
 
-Screen-replay presentation attack detection (PAD) for face images: reads a folder of images and writes an attack score per image (higher = more likely a screen recapture).
+Screen-replay presentation attack detection (PAD) for face images. `infer.py` reads a folder of images and writes a CSV with an attack score per image (higher = more likely a photograph of a screen) and a decision at a calibrated threshold.
 
-> Work in progress. Inference (`screenpad infer` / `infer.py`) and model artefacts land in later phases; this README is filled in as they do.
+No real attack is used for training: a physics-based simulator turns bona fide faces into synthetic screen recaptures, and camera-only controls make the screen the only difference to learn. The technical report, submitted alongside this repository, explains the method, the evidence and the trade-offs.
 
-## Setup (uv)
+| Held-out test (17 attacks, 194 bona fide) | Initial system | **Deployed system** (default) |
+|---|---|---|
+| Attacks accepted (APCER) | 1/17 | 1/17 |
+| Bona fide rejected (BPCER) at the 10% calibration threshold | 5.2% | 9.8% |
+| AUC | 0.982 | 0.988 |
+| Bona fide rejected under sensor noise (sigma 5) | 66.0% | 18.6% |
+| External CelebA-Spoof screen replays caught | 108/108 | 108/108 |
 
-[uv](https://docs.astral.sh/uv/) manages the Python version, the virtual environment (`.venv/`) and the locked dependency set (`uv.lock`) in one tool.
+## Quick start with Docker
 
 ```bash
-uv sync --extra torch     # create .venv with Python 3.12 + all deps, exactly as locked
-uv run screenpad --help   # run anything inside the env without activating it
-uv run pytest             # tests
+docker build -t screenpad .
+docker run --rm -v screenpad-models:/models screenpad preflight          # checks the machine; downloads the weights (~2 GB, once)
+docker run --rm -v screenpad-models:/models \
+    -v /path/to/images:/data/in:ro -v /path/to/out:/data/out \
+    screenpad infer --input /data/in --output /data/out/scores.csv --recursive
 ```
 
-Common commands:
+The image is CPU-only (about 0.8 GB). Weights are not baked in: the first `preflight` or `infer` downloads them from the public Hugging Face repo [`Jamie1701/screenpad-runs`](https://huggingface.co/Jamie1701/screenpad-runs) into the named volume, and later runs reuse it (they also work with `--network none`). Tested in fresh containers with 4 CPUs and 4 GB of memory, offline after the first download, on Linux arm64 and on x86-64 (emulated): the pre-flight golden test passes on both, and every decision matched local scoring (32 development images; 484 external CelebA-Spoof images on arm64). Scores agree across machines to about 0.03 z on average (at most 0.24 z on single images, from floating-point differences between CPU builds), so only images within about 0.25 z of the threshold could change decision between machines.
 
-| Task | Command |
+## Quick start without Docker
+
+[uv](https://docs.astral.sh/uv/) installs the pinned Python (3.12) and the exact locked dependencies (`uv.lock`).
+
+```bash
+uv sync --extra torch
+uv run --extra torch screenpad preflight
+uv run --extra torch python infer.py --input /path/to/images --output scores.csv --recursive
+```
+
+`--device cpu|mps|cuda` selects the device (default: the best available); the threshold was calibrated on CPU, which reproduces it exactly.
+
+## Output
+
+One row per file in the input folder:
+
+| Column | Meaning |
 |---|---|
-| Add a dependency | `uv add <pkg>` (or `uv add --optional torch <pkg>`, `uv add --dev <pkg>`) |
-| Remove one | `uv remove <pkg>` |
-| Activate the env (optional) | `source .venv/bin/activate` |
-| Jupyter kernel | select `.venv/bin/python` in VS Code / Jupyter |
+| `image` | path relative to `--input` |
+| `attack_score` | ensemble score: robust z against bona fide calibration images (0 = a typical bona fide image; each unit is one typical bona fide spread). Higher = more attack-like |
+| `attack` | 1 if `attack_score` >= `threshold`, else 0 |
+| `threshold` | the calibrated threshold: rejects 10% of bona fide calibration images (z 1.231 for the deployed system) |
+| `face_found`, `n_faces` | face detection result; with no face, the image is scored on its largest centred square |
+| `z_<member>` | each ensemble member's score, for diagnosis |
+| `error` | set when a file cannot be scored (unsupported format, corrupt file); score left empty |
 
-## Pipeline
+A different operating point needs no retraining: threshold `attack_score` directly. Lower thresholds catch more attacks and reject more genuine users.
 
-```bash
-screenpad pull-data   # download + SHA-256-verify the data tar from the private HF dataset (needs `hf auth login`)
-screenpad manifest    # per-image table: id, label, size, ICC/EXIF flags, paired?
-screenpad splits      # assign IDs to train/val/dev/test (6 real attacks + twins -> dev, 17 + twins -> test)
-screenpad audit       # leakage checks on the split
-screenpad eda         # face detections, attack/twin grid, power spectra -> results/eda/
-screenpad cache       # aligned face crops (tight k=1.0, loose k=1.25) at 384px -> results/cache/crops_*_aligned.npz,
-                      # each verified byte-exact against a fresh recompute (--push uploads to HF)
-screenpad synth       # synthetic screen recaptures (+ camera-only bona fide controls) of train/val images,
-                      # cropped by the same pipeline -> results/cache/synth_*.npz (never from test)
-screenpad pull-data --cache   # fetch the crop caches instead of the raw data
-# off-the-shelf comparison (needs OpenCV 4 for its Caffe face detector; layered, project env untouched):
-uv run --with 'opencv-python-headless>=4.10,<5' screenpad baseline-minifasnet --splits dev,val
-```
+## Inputs and assumptions
 
-Every command takes `--set key.sub=value` overrides and `--config extra.yaml` on top of `configs/*.yaml`.
+- **One face per image**, roughly frontal, as in the supplied data. With several faces the largest is used.
+- **Formats:** PNG, JPEG, HEIC/HEIF (the iPhone default), BMP, WebP and TIFF, any case; colour, greyscale, palette, alpha, CMYK and 16-bit images; orientation is applied. All metadata (EXIF, colour profile, file size) is discarded after converting to sRGB, so it cannot act as a shortcut. Any other file gets a row with an error.
+- **Screen replays only.** Prints, masks, deepfakes and injection attacks are out of scope.
+- **Known weak spots** (report, Sec. 4.7 and 6): very small or heavily blurred faces, heavy JPEG re-compression, and images with a flat band at the crop edge (letterboxing) lean towards "attack". `screenpad preflight --input <folder>` lists small, 16-bit, corrupt and unsupported files before scoring.
 
-Commands that need PyTorch (`probe`, `synth-gallery`, training) run with the `torch` extra: `uv run --extra torch screenpad probe`. A plain `uv run` re-syncs the environment to the default dependencies and would uninstall torch again.
+## Pre-flight check
 
-```bash
-uv run --extra torch screenpad synth-gallery   # contact sheets: results/synth/gallery/
-uv run --extra torch screenpad probe           # frozen-backbone linear probes -> results/probes/
-```
+`screenpad preflight` (also inside Docker) checks a machine before scoring and exits non-zero on failure:
 
-## EDA
+1. environment and library versions;
+2. the ensemble file (hash, members, threshold);
+3. the weights (downloaded if missing);
+4. the face detector;
+5. a golden test: two fixed synthetic images go through the full inference path, and every member's score must match the recorded reference (`artefacts/preflight_reference.json`) within 0.1 z;
+6. with `--input`, a scan of the folder for problem files.
 
-[`notebooks/EDA.ipynb`](notebooks/EDA.ipynb) - class-level distributions and separability of every salient feature (file metadata, face geometry, pixel and spectral statistics), the metadata shortcut demonstration (logistic regression), and what survives cropping. It describes the unaligned crops: run `screenpad eda` and `screenpad cache --set preprocess.align=false` first; re-execute with `uv run jupyter nbconvert --to notebook --execute --inplace notebooks/EDA.ipynb`.
+## Artefacts
 
-## Synthetic attacks
+| File | What it is |
+|---|---|
+| `artefacts/frozen_photo.json` | **deployed system** (default): members H, I (DINOv2-B fine-tuned at 224 and 392 px with photometric augmentation, 3 seeds each) and PatchCore on H's features; calibration statistics; threshold |
+| `artefacts/frozen.json` | initial system (A, C, PatchCore on A), pre-registered and scored once on the test set; use with `--frozen artefacts/frozen.json` |
+| `artefacts/preflight_reference.json` | golden scores for the pre-flight check |
+| `screenpad/assets/face_detection_yunet_2023mar.onnx` | YuNet face detector (bundled, 230 kB) |
+| `configs/` | preprocessing, training and ensemble settings |
 
-Training has no real attacks. Attacks are synthesised from bona fide images by a physical recapture simulator ([`screenpad/synth/recapture.py`](screenpad/synth/recapture.py), ranges in [`configs/synth.yaml`](configs/synth.yaml)). It simulates:
-- the display: resolution, tone, gamut and sub-pixel layout;
-- glare, reflections and dust;
-- the phone's tilt and lens;
-- the camera pipeline: Bayer mosaic, noise, demosaicing, denoising, sharpening and JPEG.
+Weights are fetched on demand (`screenpad fetch-models --dest models`): each run's `config.yaml` and `ckpt/last.pt`, and the PatchCore memory bank.
 
-Moiré emerges from the sub-pixel grid being sampled by the camera grid, rather than being drawn on. Camera-only bona fide controls go through the camera stage with no screen, so phone processing is not a cue for "attack".
+## Dependencies
 
-[`notebooks/Recapture.ipynb`](notebooks/Recapture.ipynb) measures what recapture changes on the 6 dev twin pairs only and compares simulated recaptures of those twins with the real attacks. It also documents the calibration and the remaining gaps. Prerequisites: `screenpad cache`, `screenpad synth --splits dev --variants 5 --set synth.camera_only_frac=1.0`.
+Python 3.12; PyTorch (CPU wheels in Docker), timm, OpenCV, Pillow (with pillow-heif for HEIC), NumPy, pandas, scikit-learn, huggingface_hub; versions pinned in `uv.lock`. Inference takes about 1.1 s per image on 6 CPU threads, model loading included.
 
-## Training (fine-tuning on Colab)
+## Reproducing the work
 
-`screenpad/train` fine-tunes a pretrained backbone (DINOv2, CLIP or ConvNeXt via timm) to separate real bona fide faces plus camera-only controls from synthetic attacks. Each epoch draws 1:1 classes with every train face in both classes, and GPU augmentation is applied identically to both. The epoch budget is fixed, so the last checkpoint is the default; the best checkpoint by synthetic val AUC is also saved. Real dev attacks are logged on every evaluation but never used for selection.
-
-Every evaluation reports two shortcut checks:
-- `ratio_spearman_bonafide` / `ratio_spearman_attack`: rank correlation between score and crop downsample factor within each class (near 0 is good, so resampling history does not drive the score).
-- `camera_vs_original_auc`: AUC separating camera-only bona fide from original bona fide (0.5 is good, so phone processing alone does not look like an attack).
+Every step is a `screenpad` command (`uv run --extra torch screenpad --help`); each takes `--set key.sub=value` overrides and `--config extra.yaml`. The data ([`Jamie1701/screenpad-data`](https://huggingface.co/datasets/Jamie1701/screenpad-data)) and run folders ([`Jamie1701/screenpad-runs`](https://huggingface.co/Jamie1701/screenpad-runs)) live on Hugging Face.
 
 ```bash
-uv run --extra torch screenpad train --config configs/runs/A_dinov2b_loose224.yaml          # one run, locally
-uv run --extra torch screenpad train --config configs/runs/A_dinov2b_loose224.yaml --bench  # batch-size probe only
-uv run --extra torch python scripts/orchestrate.py configs/runs/sweep.yaml --slots 2       # queue on parallel Colab L4 sessions
+screenpad pull-data && screenpad manifest && screenpad splits && screenpad audit   # data, splits by identity, leakage checks
+screenpad cache                       # aligned face crops (tight 1.0x, loose 1.25x the face box), verified byte-exact
+screenpad synth                       # synthetic recaptures + camera-only controls (train/val only)
+screenpad train --config configs/runs/H_dinov2b_loose224_photo.yaml        # one fine-tuning run (or scripts/orchestrate.py on Colab)
+screenpad oneclass --members patchcore --block 8 --coreset 0.01 --weights-run H_dinov2b_loose224_photo_s42
+screenpad ensemble --config configs/ensemble_photo.yaml && screenpad freeze --config configs/ensemble_photo.yaml
+screenpad evaluate --split dev        # and --split test --confirm-test, scored once per system
+screenpad robustness --split test --suite degradations|edge                 # benign degradations, border test
 ```
 
-Each run writes `results/runs/<name>/` containing the resolved `config.yaml`, `provenance.json`, `bench.json` (if probed), `metrics.csv` (per epoch), `scores_best.csv` and `scores_last.csv` (per image, val and dev), `summary.json`, `ckpt/best.pt` and `ckpt/last.pt`, `train.log` and a `STATUS` file. With `--push`, the folder is uploaded to the private HF model repo `Jamie1701/screenpad-runs` under `runs/<name>/`, together with a `MANIFEST.json` of every file's byte size and SHA-256. The orchestrator independently checks the Hub listing against that manifest before a job counts as done.
+Other commands: `probe` (frozen-feature baselines), `baseline-minifasnet`, `shortcut-test`, `explain`, `bench-inference`, `ssl-adapt`, `mlflow-sync`, `eda`, `synth-gallery`. `notebooks/EDA.ipynb` and `notebooks/Recapture.ipynb` hold the exploratory analysis and the simulator calibration. GPU work ran on Google Colab through `scripts/orchestrate.py` (parallel sessions, progress polling, results verified on the Hub).
 
-The orchestrator runs one thread per Colab session (`pad-q1`, `pad-q2`, ...). Sessions that Colab refuses (session limit or capacity) are retried while jobs remain, and a failed job is retried once. Every Colab CLI call goes through one lock, because the CLI hung when two sessions ran `colab exec` at the same moment. State is kept in `results/orchestrator/<queue>/state.json` and `events.log`, and re-running the script skips finished jobs. Each session is stopped when its thread exits. In testing on 2026-10-18 the account was granted 2 concurrent L4 sessions.
-
-## Experiment tracking (MLflow)
-
-Every run folder (config, provenance, per-epoch metrics, scores) is the record of truth, on the private HF runs repo. `screenpad mlflow-sync` mirrors them, plus the one-class members, the shrink test and the ensemble ablation, into a local MLflow store for side-by-side comparison. Training itself has no MLflow dependency, so Colab VMs need no tracking server. Re-running the sync replaces each mirrored run.
-
-```bash
-uv run --extra torch screenpad mlflow-sync
-uv run --extra torch mlflow ui --backend-store-uri sqlite:///results/mlflow.db --port 5001 --workers 1   # http://127.0.0.1:5001; Ctrl+C to stop
-# if the port stays busy after stopping: kill $(lsof -a -t -iTCP:5001 -sTCP:LISTEN -c Python)
+```text
+screenpad/   data (loading, crops, splits), synth (simulator), train, oneclass, ensemble, eval, explain, infer.py, preflight.py
+configs/     default, data, synth, train, ensemble(_photo) and per-run configs
+tests/       pytest suite: uv run --extra torch pytest
+docs/        Sphinx documentation (overview, model card, CLI and API reference)
 ```
 
-## Data
+Documentation site: `uv run --extra torch --group docs sphinx-build docs docs/_build/html`, then open `docs/_build/html/index.html`.
 
-`DATA/test/data/{Bonafide,Screens}/` locally (not in git); a private copy lives at `Jamie1701/screenpad-data` on the HF Hub as one byte-identical tar plus per-file SHA-256s (`scripts/push_data_to_hf.py` builds it; `screenpad pull-data` downloads, extracts and verifies it).
+## Third-party components and licences
 
-## GPU runs (Colab CLI)
+Only permissively licensed models are used, so nothing here blocks commercial use of the code.
 
-`scripts/colab_job.sh` drives a Colab runtime from the terminal (needs `uv tool install google-colab-cli`, a one-off `colab new` login, and `hf auth login`):
+| Component | Use | Licence |
+|---|---|---|
+| [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet) (bundled; `screenpad/assets/LICENSE-YuNet`) | face detection | MIT |
+| [DINOv2](https://github.com/facebookresearch/dinov2) ViT-S/B/L via [timm](https://github.com/huggingface/pytorch-image-models) | backbone of every shipped member | Apache-2.0 |
+| CLIP ViT-B/16, ConvNeXt-T via timm | sweep comparisons only | MIT; Apache-2.0 |
+| PyTorch, timm | models, training, inference | BSD-3-Clause; Apache-2.0 |
+| [pillow-heif](https://github.com/bigcat88/pillow_heif) | reading HEIC/HEIF inputs | BSD-3-Clause (bundles libheif, LGPL-3.0, dynamically linked) |
+| [MiniFASNet](https://github.com/minivision-ai/Silent-Face-Anti-Spoofing) @ `b6d5f04` (architecture vendored; weights downloaded and SHA-256 checked) | off-the-shelf comparison only | Apache-2.0 |
+| anomalib (EfficientAD), MLflow | one-class experiment; result mirror (dev only) | Apache-2.0 |
 
-```bash
-scripts/colab_job.sh up T4            # start a T4 session, upload the working tree, install
-scripts/colab_job.sh run pull-data    # VM downloads the data from the HF Hub
-scripts/colab_job.sh run splits       # any screenpad command
-scripts/colab_job.sh get content/screenpad/results/x.csv ./x.csv
-scripts/colab_job.sh down             # always stop the session afterwards
-```
+YuNet was chosen for its MIT licence, its size (230 kB, CPU, through OpenCV, already a dependency) and its five landmarks; it found a face in 1022 of 1023 images. InsightFace SCRFD/RetinaFace weights and WIDER FACE-trained MTCNN ports were rejected because their weights or training data are research-only. MiniFASNet is the comparison baseline because it is one of very few openly released anti-spoofing models with a permissive licence and weights; its face detector was trained on WIDER FACE, so it stays an evaluation-only baseline.
 
-## Third-party components
-
-Face detection uses OpenCV's YuNet model, bundled in `screenpad/assets/`. It was chosen for its **MIT licence** (commercial use permitted); see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for every bundled model, its licence, and the alternatives rejected on licence grounds.
+**Data and weights.** The bona fide images appear to be FFHQ (CC BY-NC-SA 4.0, non-commercial); the screen attacks were provided by the assessors. The published weights were trained on FFHQ-derived images, so they are released for non-commercial research use under the same terms. The code is MIT licensed (`LICENSE`).
