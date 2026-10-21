@@ -1,0 +1,9 @@
+# Photometric-augmentation retrain (the deployed system): H = A + photometric aug, I = C + photometric aug, 3 seeds each.
+pull_data: true
+jobs:
+  - {name: I_dinov2b_loose392_photo_s42, config: configs/runs/I_dinov2b_loose392_photo.yaml, set: [seed=42]}
+  - {name: I_dinov2b_loose392_photo_s43, config: configs/runs/I_dinov2b_loose392_photo.yaml, set: [seed=43]}
+  - {name: I_dinov2b_loose392_photo_s44, config: configs/runs/I_dinov2b_loose392_photo.yaml, set: [seed=44]}
+  - {name: H_dinov2b_loose224_photo_s42, config: configs/runs/H_dinov2b_loose224_photo.yaml, set: [seed=42]}
+  - {name: H_dinov2b_loose224_photo_s43, config: configs/runs/H_dinov2b_loose224_photo.yaml, set: [seed=43]}
+  - {name: H_dinov2b_loose224_photo_s44, config: configs/runs/H_dinov2b_loose224_photo.yaml, set: [seed=44]}

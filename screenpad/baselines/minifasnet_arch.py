@@ -1,7 +1,7 @@
 # Vendored unchanged (apart from this header) from minivision-ai/Silent-Face-Anti-Spoofing,
 # src/model_lib/MiniFASNet.py at commit b6d5f04ad78778917853b25c778acef6d5626d15.
 # Copyright (c) 2020 Minivision. Licensed under the Apache License, Version 2.0:
-# http://www.apache.org/licenses/LICENSE-2.0 . See THIRD_PARTY_NOTICES.md.
+# http://www.apache.org/licenses/LICENSE-2.0 . See README.md (Third-party components and licences).
 #
 # -*- coding: utf-8 -*-
 # @Time : 20-6-3 下午4:45

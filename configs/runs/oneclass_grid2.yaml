@@ -1,0 +1,9 @@
+# One-class candidates independent of the simulator (2026-10-20): PatchCore on WideResNet-50 layers 2+3 (its published
+# backbone; convolutional texture features) and on DINOv2-Large (does scale keep finer texture?). 1% coreset as in the
+# first grid. Chosen on synthetic val only; an independent member joins the ensemble only above the agreed bar.
+pull_data: true
+jobs:
+  - {name: pc_loose224_wrn50, cmd: [screenpad, oneclass, --members, patchcore, --arch, wrn50, --input-size, '224', --coreset, '0.01', --run-name, pc_loose224_wrn50, --push]}
+  - {name: pc_loose392_dinov2l_b10, cmd: [screenpad, oneclass, --members, patchcore, --arch, dinov2_l, --input-size, '392', --block, '10', --coreset, '0.01', --run-name, pc_loose392_dinov2l_b10, --push]}
+  - {name: pc_loose392_wrn50, cmd: [screenpad, oneclass, --members, patchcore, --arch, wrn50, --input-size, '392', --coreset, '0.01', --run-name, pc_loose392_wrn50, --push]}
+  - {name: pc_loose392_dinov2l_b6, cmd: [screenpad, oneclass, --members, patchcore, --arch, dinov2_l, --input-size, '392', --block, '6', --coreset, '0.01', --run-name, pc_loose392_dinov2l_b6, --push]}

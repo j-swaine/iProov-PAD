@@ -23,9 +23,6 @@ from dataclasses import asdict, dataclass
 import cv2
 import numpy as np
 
-LAYOUTS = ("rgb_stripe", "bgr_stripe", "rgbg_diamond")
-
-
 def _u(rng: np.random.Generator, lo_hi) -> float:
     lo, hi = lo_hi
     return float(rng.uniform(lo, hi))

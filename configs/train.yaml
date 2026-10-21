@@ -4,7 +4,7 @@ train:
   backbone: dinov2_b  # key of screenpad.train.model.BACKBONES
   crop: loose  # tight | loose (which crop cache)
   input_size: 224  # model input; the 384 crops are resized (area) after augmentation
-  epochs: 10  # fixed budget: the final checkpoint is the default choice (synthetic val can mislead, see probes)
+  epochs: 20  # fixed budget, as every reported run; the final checkpoint is used (synthetic val saturates, see probes)
   batch_size: 64  # overridden by the batch-size probe result when `auto_batch` is true
   auto_batch: false
   lr: 0.0001  # peak learning rate for the head and last block, scaled linearly with batch_size / 64

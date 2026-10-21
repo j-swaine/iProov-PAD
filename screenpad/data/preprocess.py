@@ -11,8 +11,6 @@ Every image, bona fide or attack, training or inference, goes through the same s
 
 With `align=True` the square is also rotated about the face-box centre so the eye line is level (roll from YuNet's eye landmarks), so every crop has the face upright in a standard position. The rotated square must lie inside the image, so the shift/shrink test uses its bounding box. Resampling is done once at the output scale: the source region is area-downsampled first when shrinking (warpAffine has no area filter, and linear interpolation would alias screen grids into moiré that was not in the photo), then rotated with cubic interpolation.
 
-`jitter` (training only) perturbs the crop itself - extra rotation, centre shift and scale - so geometric augmentation costs no second resampling of an already-resized crop.
-
 Cropping relative to the face makes the framing identical across classes. It does not equalise the source resolution: attack faces are ~3x more pixels wide than bona fide ones, so their crops are downsampled harder. `CropInfo.resample_ratio` records this per image so it can be analysed and countered.
 
 If no face is found, the largest centred square is used and `face_found` is False, so inference always produces a crop.
@@ -54,24 +52,10 @@ class CropInfo:
     resample_ratio: float  # side / output size: >1 means downsampled
     shifted: bool
     shrunk: bool
-    angle_deg: float = 0.0  # rotation applied to the crop (aligned roll plus any jitter)
+    angle_deg: float = 0.0  # rotation applied to the crop (the aligned roll)
 
     def to_dict(self) -> dict:
         return asdict(self)
-
-
-@dataclass
-class CropJitter:
-    """Perturbation of one crop: extra rotation (deg), centre shift (fraction of crop side), log-scale of the side."""
-
-    angle: float = 0.0
-    dx: float = 0.0
-    dy: float = 0.0
-    log_scale: float = 0.0
-
-    @classmethod
-    def sample(cls, rng: np.random.Generator, max_angle: float = 10.0, max_shift: float = 0.05, max_log_scale: float = 0.1) -> "CropJitter":
-        return cls(*rng.uniform(-1, 1, 4) * [max_angle, max_shift, max_shift, max_log_scale])
 
 
 class FaceCropper:
@@ -92,7 +76,7 @@ class FaceCropper:
         f = faces[np.argmax(faces[:, 2] * faces[:, 3])] / np.r_[np.full(14, s), 1.0]
         return Detection(box=f[:4], landmarks=f[4:14].reshape(5, 2), score=float(f[14]), n_faces=len(faces))
 
-    def crop(self, rgb: np.ndarray, det: Detection | None, k: float, size: int, jitter: CropJitter | None = None) -> tuple[np.ndarray, CropInfo]:
+    def crop(self, rgb: np.ndarray, det: Detection | None, k: float, size: int) -> tuple[np.ndarray, CropInfo]:
         """Square crop of side k * face size around `det` (or the centre if None), resized to `size`."""
         h, w = rgb.shape[:2]
         if det is not None:
@@ -100,8 +84,8 @@ class FaceCropper:
             cx, cy, side = x + bw / 2, y + bh / 2, k * max(bw, bh)
         else:
             cx, cy, side = w / 2, h / 2, float(min(h, w))
-        if self.align or jitter is not None:
-            return _rotated_crop(rgb, det, cx, cy, side, size, (det.roll_deg if det and self.align else 0.0), jitter or CropJitter())
+        if self.align:
+            return _rotated_crop(rgb, det, cx, cy, side, size, det.roll_deg if det else 0.0)
         shrunk = side > min(h, w)
         side = min(side, float(min(h, w)))
         x0 = float(np.clip(cx - side / 2, 0, w - side))
@@ -124,17 +108,13 @@ class FaceCropper:
         )
         return out, info
 
-    def __call__(self, rgb: np.ndarray, k: float, size: int, jitter: CropJitter | None = None) -> tuple[np.ndarray, CropInfo]:
-        return self.crop(rgb, self.detect(rgb), k, size, jitter)
+    def __call__(self, rgb: np.ndarray, k: float, size: int) -> tuple[np.ndarray, CropInfo]:
+        return self.crop(rgb, self.detect(rgb), k, size)
 
 
-def _rotated_crop(rgb: np.ndarray, det: Detection | None, cx: float, cy: float, side: float, size: int,
-                  roll: float, j: CropJitter) -> tuple[np.ndarray, CropInfo]:
-    """Square of `side` centred on (cx, cy), rotated by `roll` + jitter so the eye line is level, resampled once to `size`."""
+def _rotated_crop(rgb: np.ndarray, det: Detection | None, cx: float, cy: float, side: float, size: int, angle: float) -> tuple[np.ndarray, CropInfo]:
+    """Square of `side` centred on (cx, cy), rotated by `angle` (the face's roll) so the eye line is level, resampled once to `size`."""
     h, w = rgb.shape[:2]
-    angle = roll + j.angle
-    side *= float(np.exp(j.log_scale))
-    cx, cy = cx + j.dx * side, cy + j.dy * side
     t = np.radians(angle)
     spread = abs(np.cos(t)) + abs(np.sin(t))  # bounding-box side of the rotated square, per unit side
     shrunk = side * spread > min(h, w)

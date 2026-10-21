@@ -1,6 +1,6 @@
 """
 Explainability tests: where in the crop, and at which spatial scale, the evidence for "attack" lives.
-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 
 Each test perturbs the input in one controlled way and re-scores it, so the result is a number per condition rather than a picture to interpret.
 

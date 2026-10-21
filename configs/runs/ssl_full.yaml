@@ -1,0 +1,8 @@
+# Self-supervised domain adaptation, full run (2026-10-20), settings from the L4 smoke tests: batch 32 without activation
+# checkpointing was fastest (47 img/s, 13 GB; batch 64 ran out of memory, batch 64 + checkpointing 38 img/s). 30 epochs
+# (~21 min). Then PatchCore on the adapted backbone. One slot, so PatchCore starts only after the weights are on HF.
+pull_data: true
+jobs:
+  - {name: ssl_dinov2b_bona, cmd: [screenpad, ssl-adapt, --run-name, ssl_dinov2b_bona, --epochs, '30', --batch-size, '32', --push]}
+  - {name: pc_loose224_b8_ssl, cmd: [screenpad, oneclass, --members, patchcore, --block, '8', --coreset, '0.01', --weights-run, ssl_dinov2b_bona, --run-name, pc_loose224_b8_ssl, --push]}
+  - {name: pc_loose392_b5_ssl, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '392', --block, '5', --coreset, '0.01', --weights-run, ssl_dinov2b_bona, --run-name, pc_loose392_b5_ssl, --push]}

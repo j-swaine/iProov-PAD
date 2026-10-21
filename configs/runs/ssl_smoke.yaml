@@ -1,0 +1,6 @@
+# Self-supervised domain adaptation, smoke tests on an L4 (2026-10-20): 2 epochs each (1 head warm-up + 1 full), no checkpoint,
+# at batch 64 and 128, to measure throughput / memory and check for collapse before the full run (bench.json, metrics.csv).
+pull_data: true
+jobs:
+  - {name: ssl_smoke_b64, cmd: [screenpad, ssl-adapt, --run-name, ssl_smoke_b64, --epochs, '2', --batch-size, '64', --no-ckpt, --push]}
+  - {name: ssl_smoke_b128, cmd: [screenpad, ssl-adapt, --run-name, ssl_smoke_b128, --epochs, '2', --batch-size, '128', --no-ckpt, --push]}

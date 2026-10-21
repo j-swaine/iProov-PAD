@@ -62,7 +62,7 @@ def make_figures(out: Path, var: pd.DataFrame, summ: pd.DataFrame, members: list
         axes[r, 0].set_ylabel(f"{occ['id'][i]}\n{'attack' if occ['label'][i] else 'bona fide'}", fontsize=8)
         for c, k in enumerate(maps):
             m = occ[k][i]
-            lim = max(np.abs(np.stack([occ[k] for k in maps])).max(), 1e-6)
+            lim = max(np.abs(m).max(), 1e-6)  # per image: no single cell dominates any image, so a shared scale washes every map out
             axes[r, c + 1].imshow(img)
             axes[r, c + 1].imshow(np.kron(m, np.ones((img.shape[0] // m.shape[0],) * 2)), cmap="RdBu_r", vmin=-lim, vmax=lim, alpha=0.55)
             if r == 0:
@@ -78,7 +78,7 @@ def make_figures(out: Path, var: pd.DataFrame, summ: pd.DataFrame, members: list
                 axes[r, -1].set_title("PatchCore: patch distance", fontsize=8)
     for a in axes.flat:
         a.set_xticks([]); a.set_yticks([]); a.grid(False)
-    fig.suptitle("Dev attacks and their bona fide twins. Occlusion: red = hiding this cell lowers the attack score (evidence for attack)", fontsize=8)
+    fig.suptitle("Dev attacks and their bona fide twins. Occlusion (scaled per image): red = hiding this cell lowers the attack score", fontsize=8)
     fig.tight_layout()
     fig.savefig(fig_dir / "occlusion_pairs.png", dpi=140)
     plt.close(fig)

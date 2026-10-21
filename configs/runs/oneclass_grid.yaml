@@ -1,0 +1,12 @@
+# PatchCore variants (2026-10-19): the up-front choice (block 8, 224 px) scored at chance. Earlier blocks (texture rather than identity),
+# 392 px, and features from fine-tuned A. 1% coreset for all so 392 px stays tractable. Chosen on synthetic val AUC only; dev reported once.
+pull_data: true
+jobs:
+  - {name: pc_loose224_b3, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '224', --block, '3', --coreset, '0.01', --run-name, pc_loose224_b3, --push]}
+  - {name: pc_loose224_b5, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '224', --block, '5', --coreset, '0.01', --run-name, pc_loose224_b5, --push]}
+  - {name: pc_loose224_b8, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '224', --block, '8', --coreset, '0.01', --run-name, pc_loose224_b8, --push]}
+  - {name: pc_loose392_b3, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '392', --block, '3', --coreset, '0.01', --run-name, pc_loose392_b3, --push]}
+  - {name: pc_loose392_b5, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '392', --block, '5', --coreset, '0.01', --run-name, pc_loose392_b5, --push]}
+  - {name: pc_loose392_b8, cmd: [screenpad, oneclass, --members, patchcore, --input-size, '392', --block, '8', --coreset, '0.01', --run-name, pc_loose392_b8, --push]}
+  - {name: pc_loose224_b8_ftA, cmd: [screenpad, oneclass, --members, patchcore, --block, '8', --coreset, '0.01', --weights-run, A_dinov2b_loose224_s42, --run-name, pc_loose224_b8_ftA, --push]}
+  - {name: pc_loose224_b11_ftA, cmd: [screenpad, oneclass, --members, patchcore, --block, '11', --coreset, '0.01', --weights-run, A_dinov2b_loose224_s42, --run-name, pc_loose224_b11_ftA, --push]}

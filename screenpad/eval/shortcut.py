@@ -1,6 +1,6 @@
 """
 Resampling counterfactual ("shrink test"): does a model's score depend on how hard a crop was downsampled?
--------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
 
 Real attack faces are ~3x more pixels wide than bona fide ones, so their crops are downsampled ~6x versus ~2.4x, and in training only original bona fide crops sit below ~3x. A model could learn "lightly resampled -> bona fide" instead of the screen.
 

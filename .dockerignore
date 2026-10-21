@@ -1,0 +1,12 @@
+# Allow-list: the image needs only the package, configs, the frozen artefacts and the lock files.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!infer.py
+!screenpad/
+!configs/
+!artefacts/
+**/__pycache__
+**/*.pyc
+**/.DS_Store

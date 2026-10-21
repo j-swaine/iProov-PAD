@@ -10,6 +10,5 @@ LABEL_NAMES = {BONAFIDE: "bonafide", ATTACK: "attack"}
 # Folder names in the supplied dataset (DATA/test/data/<folder>/<id>.png).
 CLASS_FOLDERS = {"Bonafide": BONAFIDE, "Screens": ATTACK}
 
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff")
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff", ".heic", ".heif")
 
-SPLITS = ("train", "val", "dev", "test")

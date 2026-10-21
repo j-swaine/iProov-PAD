@@ -1,0 +1,180 @@
+{
+  "enabled": [
+    "H",
+    "I",
+    "patchcore_ftH"
+  ],
+  "members": {
+    "A": {
+      "enabled": false,
+      "type": "run",
+      "runs": [
+        "A_dinov2b_loose224_s42",
+        "A_dinov2b_loose224_s43",
+        "A_dinov2b_loose224_s44"
+      ],
+      "family": "twoclass",
+      "calibration": [
+        {
+          "source": "A_dinov2b_loose224_s42",
+          "median": -8.664452562718516,
+          "scale": 1.1916129268024165,
+          "n_calibration": 240
+        },
+        {
+          "source": "A_dinov2b_loose224_s43",
+          "median": -9.024391698637327,
+          "scale": 1.3291326543633188,
+          "n_calibration": 240
+        },
+        {
+          "source": "A_dinov2b_loose224_s44",
+          "median": -9.811524833879488,
+          "scale": 1.362306101540318,
+          "n_calibration": 240
+        }
+      ]
+    },
+    "C": {
+      "enabled": false,
+      "type": "run",
+      "runs": [
+        "C_dinov2b_loose392_s42",
+        "C_dinov2b_loose392_s43",
+        "C_dinov2b_loose392_s44"
+      ],
+      "family": "twoclass",
+      "calibration": [
+        {
+          "source": "C_dinov2b_loose392_s42",
+          "median": -9.691580758768705,
+          "scale": 0.761299088308554,
+          "n_calibration": 240
+        },
+        {
+          "source": "C_dinov2b_loose392_s43",
+          "median": -11.149295369893446,
+          "scale": 0.6756962857610469,
+          "n_calibration": 240
+        },
+        {
+          "source": "C_dinov2b_loose392_s44",
+          "median": -11.600073313595821,
+          "scale": 1.0167622069457094,
+          "n_calibration": 240
+        }
+      ]
+    },
+    "patchcore_ftA": {
+      "enabled": false,
+      "type": "oneclass",
+      "path": "patchcore_loose224_ftA",
+      "hf_run": "pc_loose224_b8_ftA",
+      "family": "oneclass",
+      "calibration": [
+        {
+          "source": "patchcore_loose224_ftA",
+          "median": 1.9307255351800812,
+          "scale": 0.059757609797715654,
+          "n_calibration": 240
+        }
+      ]
+    },
+    "H": {
+      "enabled": true,
+      "type": "run",
+      "runs": [
+        "H_dinov2b_loose224_photo_s42",
+        "H_dinov2b_loose224_photo_s43",
+        "H_dinov2b_loose224_photo_s44"
+      ],
+      "family": "twoclass",
+      "calibration": [
+        {
+          "source": "H_dinov2b_loose224_photo_s42",
+          "median": -7.501049044909962,
+          "scale": 1.4287473959004156,
+          "n_calibration": 240
+        },
+        {
+          "source": "H_dinov2b_loose224_photo_s43",
+          "median": -8.183909369667871,
+          "scale": 1.7604382173402024,
+          "n_calibration": 240
+        },
+        {
+          "source": "H_dinov2b_loose224_photo_s44",
+          "median": -9.738755251061411,
+          "scale": 1.9034405477257252,
+          "n_calibration": 240
+        }
+      ]
+    },
+    "I": {
+      "enabled": true,
+      "type": "run",
+      "runs": [
+        "I_dinov2b_loose392_photo_s42",
+        "I_dinov2b_loose392_photo_s43",
+        "I_dinov2b_loose392_photo_s44"
+      ],
+      "family": "twoclass",
+      "calibration": [
+        {
+          "source": "I_dinov2b_loose392_photo_s42",
+          "median": -9.952237591719662,
+          "scale": 1.18143908757251,
+          "n_calibration": 240
+        },
+        {
+          "source": "I_dinov2b_loose392_photo_s43",
+          "median": -10.250620373071676,
+          "scale": 1.2167559465321962,
+          "n_calibration": 240
+        },
+        {
+          "source": "I_dinov2b_loose392_photo_s44",
+          "median": -11.543133263818032,
+          "scale": 1.1480741968485921,
+          "n_calibration": 240
+        }
+      ]
+    },
+    "patchcore_ftH": {
+      "enabled": true,
+      "type": "oneclass",
+      "path": "patchcore_loose224_ftH",
+      "hf_run": "pc_loose224_b8_ftH",
+      "family": "oneclass",
+      "calibration": [
+        {
+          "source": "patchcore_loose224_ftH",
+          "median": 1.9024760094846465,
+          "scale": 0.06172206670294134,
+          "n_calibration": 240
+        }
+      ]
+    }
+  },
+  "ablation_members": [
+    "A",
+    "C",
+    "patchcore_ftA",
+    "H",
+    "I",
+    "patchcore_ftH"
+  ],
+  "roots": {
+    "runs": "results/sweep/hub/runs",
+    "oneclass": "results/oneclass"
+  },
+  "hf_runs_repo": "Jamie1701/screenpad-runs",
+  "combine": "mean",
+  "bpcer_target": 0.1,
+  "threshold_z": 1.2311743748821078,
+  "calibrated_on": {
+    "device": "cpu",
+    "n": 240,
+    "set": "val bona fide originals + camera-only variant 0"
+  }
+}

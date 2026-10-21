@@ -28,9 +28,10 @@ def load_run(run_dir: str | Path, device, ckpt: str = "last.pt"):
     return model.to(device).eval(), c
 
 
-def score_images(model, images: np.ndarray, input_size: int, device, batch_size: int = 64) -> np.ndarray:
-    """P(attack) for uint8 (N, H, W, 3) crops."""
+def score_images(model, images: np.ndarray, input_size: int, device, batch_size: int = 64, desc: str | None = None) -> np.ndarray:
+    """P(attack) for uint8 (N, H, W, 3) crops. `desc`: show a progress bar (every 30 s) under that label."""
     import torch
+    from tqdm import tqdm
 
     from . import augment
     from .model import normalisation
@@ -38,7 +39,7 @@ def score_images(model, images: np.ndarray, input_size: int, device, batch_size:
     mean, std = (torch.tensor(v, device=device).view(1, 3, 1, 1) for v in normalisation(model))
     out = []
     with torch.no_grad():
-        for i in range(0, len(images), batch_size):
+        for i in tqdm(range(0, len(images), batch_size), desc=desc, unit="batch", mininterval=30, disable=desc is None):
             x = torch.from_numpy(images[i : i + batch_size]).to(device).permute(0, 3, 1, 2).float().div_(255)
             x = (augment.to_input(x, input_size) - mean) / std
             out.append(torch.sigmoid(model(x).float().squeeze(1)).cpu().numpy())

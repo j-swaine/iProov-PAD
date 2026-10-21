@@ -219,3 +219,32 @@ def test_to_input_resizes_to_model_size():
 
 def test_sample_params_is_class_blind():
     assert list(inspect.signature(sample_params).parameters) == ["rng", "n", "a"]
+
+
+PHOTO = {**CFG, "p_blur": 1.0, "max_blur": 2.0, "p_gamma": 1.0, "max_gamma": 1.5, "p_noise": 1.0, "max_noise": 0.03}
+
+
+def test_photometric_off_keeps_rng_stream():
+    """Configs without the photometric keys draw exactly what they drew before they existed."""
+    a, b = np.random.default_rng(0), np.random.default_rng(0)
+    p = sample_params(a, 8, CFG)
+    q = sample_params(b, 8, {**CFG, "p_blur": 0.0, "p_gamma": 0.0, "p_noise": 0.0})
+    assert set(p) == set(q) and not {"blur", "gamma", "noise"} & set(p)
+    assert a.random() == b.random()
+
+
+def test_photometric_shapes_range_and_determinism():
+    x = torch.rand(4, 3, 32, 32)
+    p = sample_params(np.random.default_rng(1), 4, PHOTO)
+    y1, y2 = apply(x, p), apply(x, p)
+    assert y1.shape == x.shape and y1.min() >= 0 and y1.max() <= 1
+    assert torch.equal(y1, y2)
+
+
+def test_blur_zero_sigma_is_identity_and_blur_smooths():
+    from screenpad.train.augment import _blur
+
+    x = torch.rand(2, 3, 32, 32)
+    out = _blur(x, np.array([0.0, 2.0]))
+    assert torch.allclose(out[0], x[0], atol=1e-5)
+    assert out[1].std() < x[1].std()

@@ -238,7 +238,7 @@ def verify_on_hub(name: str) -> list[str]:
     return [f"{rel}: missing or wrong size" for rel, m in manifest.items() if sizes.get(f"runs/{name}/{rel}") != m["bytes"]]
 
 
-def worker(slot: str, gpu: str, q: Queue, poll: float, max_quiet: float, retry_every: float) -> None:
+def worker(slot: str, gpu: str, q: Queue, poll: float, max_quiet: float, retry_every: float, max_stall: float = 0) -> None:
     s = Session(slot, gpu, q)
     current = None
     try:
@@ -267,6 +267,7 @@ def worker(slot: str, gpu: str, q: Queue, poll: float, max_quiet: float, retry_e
                 continue
             launch_failures = 0
             last_ok, last_epoch = time.time(), None
+            last_change, last_st = time.time(), None
             while True:
                 time.sleep(poll)
                 st = s.status(job["name"])
@@ -277,6 +278,13 @@ def worker(slot: str, gpu: str, q: Queue, poll: float, max_quiet: float, retry_e
                         return
                     continue
                 last_ok = time.time()
+                if st != last_st:
+                    last_change, last_st = time.time(), st
+                elif max_stall and st.get("state") not in ("done", "failed") and time.time() - last_change > max_stall:
+                    # answering but not progressing: on an expensive GPU, fail it and release the session rather than wait
+                    q.event(slot, f"job {job['name']} stalled: STATUS unchanged for {max_stall:.0f}s ({st}); failing it and stopping the session")
+                    q.finish(job["name"], False, "stalled")
+                    return
                 if st.get("epoch") != last_epoch and st.get("state") == "running":
                     last_epoch = st.get("epoch")
                     q.event(slot, f"job {job['name']} epoch {last_epoch}/{st.get('epochs')}")
@@ -310,6 +318,8 @@ def main() -> None:
     ap.add_argument("--poll", type=float, default=120)
     ap.add_argument("--max-quiet", type=float, default=1800, help="seconds without a status answer before a session is given up")
     ap.add_argument("--retry-every", type=float, default=600, help="seconds between attempts to open a refused session")
+    ap.add_argument("--max-stall", type=float, default=0, help="seconds a job's STATUS may stay unchanged before it is failed and its session stopped (0 = off; jobs must report progress)")
+    ap.add_argument("--prefix", default="pad-q", help="session name prefix, so two queues (e.g. L4 and A100) can run at once")
     a = ap.parse_args()
     q = Queue(a.queue, ROOT / "results" / "orchestrator" / a.queue.stem)
     q.event("main", f"queue {a.queue} with {q.remaining()} jobs to do, {a.slots} slots of {a.gpu}")
@@ -317,11 +327,11 @@ def main() -> None:
     respawns = 0
     while True:  # keep `slots` workers alive while jobs are pending; a slot that exits is replaced (bounded)
         for k in range(a.slots):
-            name = f"pad-q{k + 1}"
+            name = f"{a.prefix}{k + 1}"
             t = threads.get(name)
             if (t is None or not t.is_alive()) and q.pending() and (t is None or respawns < 12):
                 respawns += t is not None
-                threads[name] = threading.Thread(target=worker, args=(name, a.gpu, q, a.poll, a.max_quiet, a.retry_every), daemon=False)
+                threads[name] = threading.Thread(target=worker, args=(name, a.gpu, q, a.poll, a.max_quiet, a.retry_every, a.max_stall), daemon=False)
                 threads[name].start()
                 time.sleep(20)  # stagger session creation
         if not any(t.is_alive() for t in threads.values()) and (not q.pending() or respawns >= 12):

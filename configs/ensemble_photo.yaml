@@ -1,0 +1,13 @@
+# Deployed system (photometric augmentation): H + I + PatchCore on H's features, same rule, calibration and 10% operating point
+# as the initial system. The frozen members stay listed (disabled) so the ablation scores old and new side by side.
+# Use: screenpad ensemble --config configs/ensemble_photo.yaml, then freeze/evaluate/robustness with the same --config.
+ensemble:
+  dir: ensemble_photo
+  members:
+    A: {enabled: false}
+    C: {enabled: false}
+    patchcore_ftA: {enabled: false}
+    H: {enabled: true, type: run, runs: [H_dinov2b_loose224_photo_s42, H_dinov2b_loose224_photo_s43, H_dinov2b_loose224_photo_s44]}
+    I: {enabled: true, type: run, runs: [I_dinov2b_loose392_photo_s42, I_dinov2b_loose392_photo_s43, I_dinov2b_loose392_photo_s44]}
+    patchcore_ftH: {enabled: true, type: oneclass, path: patchcore_loose224_ftH, hf_run: pc_loose224_b8_ftH}
+  ablation_members: [A, C, patchcore_ftA, H, I, patchcore_ftH]

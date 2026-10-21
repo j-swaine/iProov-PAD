@@ -1,6 +1,6 @@
 """
 `screenpad mlflow-sync`: replay finished results into a local MLflow store for browsing and comparison.
------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
 
 The run folders (config.yaml, provenance.json, metrics.csv, summary.json) stay the source of truth; this only mirrors them, so training needs no MLflow and Colab VMs no tracking server. Re-running replaces each mirrored run, so the store always matches the folders.
 

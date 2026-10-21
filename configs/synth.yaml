@@ -2,7 +2,8 @@ synth:
   # Recapture simulator (screenpad/synth/recapture.py). Each synthetic attack draws every parameter
   # independently from these ranges ([lo, hi]; log-uniform where marked). Ranges were set from the
   # 6 dev twin pairs (notebooks/Recapture.ipynb) and then widened, so the simulator randomises
-  # conditions rather than copying six photos. Test attacks were not looked at.
+  # conditions rather than copying six photos. Test attacks were not used for calibration (the earlier
+  # EDA, run before the dev/test split, did describe all 23; disclosed in docs/report_notes.md).
   ranges:
     layouts: [rgb_stripe, bgr_stripe, rgbg_diamond]
     screen_per_src: [0.4, 1.0]  # log; dev: 0.43-0.8 screen px per FFHQ px

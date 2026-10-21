@@ -1,0 +1,5 @@
+# A's recipe + photometric robustness augmentation, prompted by the validation robustness test (deployed system).
+# Both classes alike. Strengths fixed in advance (not tuned on dev): blur sigma <= 2 px, noise sigma <= 8/255, gamma in [1/1.5, 1.5], brightness +-40% (A: +-15%).
+train:
+  {backbone: dinov2_b, crop: loose, input_size: 224, batch_size: 64, epochs: 20,
+   augment: {brightness: 0.4, p_blur: 0.3, max_blur: 2.0, p_gamma: 0.3, max_gamma: 1.5, p_noise: 0.3, max_noise: 0.031}}

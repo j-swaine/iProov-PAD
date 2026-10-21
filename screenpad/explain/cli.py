@@ -46,7 +46,8 @@ def _scorers(cfg, device, log):
 
             def fn(images, bank=bank):
                 pc, meta = PatchCore.load(bank, device)
-                dino = Dino(device, int(meta["input_size"]), int(meta["block"]))
+                w = Path(e.roots["runs"]) / meta["weights_run"] / "ckpt" / "last.pt" if meta.get("weights_run") else None
+                dino = Dino(device, int(meta["input_size"]), int(meta["block"]), str(w) if w else None, meta.get("arch", "dinov2_b"))
                 s = np.concatenate([pc.score(dino.patches(images[i : i + 64]))[0] for i in range(0, len(images), 64)])
                 return np.log(np.maximum(s, 1e-12))
             out[name] = fn

@@ -1,0 +1,7 @@
+# EfficientAD (anomalib 2.6.1, the authors' pretrained teacher) on an A100: student + autoencoder trained on train bona fide
+# only, 70000 steps at batch 1 and 256 px (the paper's settings). A worker-count probe runs first (bench.json). Progress is
+# written to STATUS every 500 steps, so the orchestrator log shows "epoch <step>/70000".
+pull_data: true
+jobs:
+  - name: ead_loose256
+    cmd: [bash, -c, "pip install -q 'anomalib==2.6.1' && screenpad oneclass --members efficientad --ead-size 256 --steps 70000 --probe-workers 2,4,8 --imagenet-dir /content/imagenette --run-name ead_loose256 --push"]

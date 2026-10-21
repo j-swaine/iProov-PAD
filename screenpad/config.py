@@ -53,15 +53,6 @@ class Config(dict):
     def __setattr__(self, name: str, value: Any) -> None:
         self[name] = value
 
-    def get_path(self, dotted: str, default: Any = None) -> Any:
-        """Fetch ``a.b.c`` returning ``default`` if any level is missing."""
-        node: Any = self
-        for part in dotted.split("."):
-            if not isinstance(node, Mapping) or part not in node:
-                return default
-            node = node[part]
-        return node
-
     def to_plain(self) -> Dict[str, Any]:
         """Return a plain (json-serialisable) nested dict."""
         return json.loads(json.dumps(self, default=str))  # dumps is dump string.

@@ -1,0 +1,4 @@
+# PatchCore on the photometric variant H's features (seed 42, block 8, 1% coreset), as pc_loose224_b8_ftA was built on A. Queue after configs/runs/photo.yaml.
+pull_data: true
+jobs:
+  - {name: pc_loose224_b8_ftH, cmd: [screenpad, oneclass, --members, patchcore, --block, '8', --coreset, '0.01', --weights-run, H_dinov2b_loose224_photo_s42, --run-name, pc_loose224_b8_ftH, --push]}

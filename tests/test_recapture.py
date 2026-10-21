@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 from screenpad.config import CONFIG_DIR
-from screenpad.data.preprocess import CropJitter, Detection, FaceCropper
+from screenpad.data.preprocess import Detection, FaceCropper
 from screenpad.eda.pairs import grid_peak
 from screenpad.synth.recapture import RecaptureParams, camera_only, recapture
 
@@ -56,8 +56,8 @@ def test_aligned_crop_levels_the_eyes():
     ys, xs = np.nonzero(out[..., 0] > 128)
     left, right = ys[xs < 80].mean(), ys[xs >= 80].mean()
     assert abs(left - right) < 1.0 and abs(info.angle_deg - 15) < 1e-6
-    jittered, _ = FaceCropper(align=True).crop(img, det, 1.0, 160, CropJitter(angle=5.0))
-    assert not np.array_equal(jittered, out)
+    unaligned, _ = FaceCropper(align=False).crop(img, det, 1.0, 160)
+    assert not np.array_equal(unaligned, out)  # alignment actually rotates the tilted face
 
 
 def test_shrunk_rotated_crop_keeps_content():

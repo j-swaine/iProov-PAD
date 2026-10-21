@@ -1,6 +1,6 @@
 """
 Ensemble: calibrate each member against bona fide faces only, average with equal weights, and measure every coalition of members (ablation).
--------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------
 
 Members are independent and switchable (`ensemble.members.<name>.enabled`):
 - `run`: a fine-tuned configuration, one or more seeds (their calibrated scores are averaged into one member);
@@ -60,6 +60,22 @@ def load_member(spec: dict, roots: dict) -> pd.DataFrame:
     zc = [c for c in out.columns if c.startswith("z")]
     out["z"] = out[zc].mean(1)
     return out[KEY + ["z"]]
+
+
+def calibration_stats(spec: dict, roots: dict) -> list[dict]:
+    """Per source (seed run or one-class model): the bona fide median and robust scale used by `robust_z`, frozen for scoring new images."""
+    if spec["type"] == "run":
+        sources = [(r, Path(roots["runs"]) / r / "scores_last.csv") for r in spec["runs"]]
+    else:
+        sources = [(spec["path"], Path(roots["oneclass"]) / spec["path"] / "scores.csv")]
+    out = []
+    for name, p in sources:
+        df = pd.read_csv(p, dtype={"id": str})
+        df = df[df.set.isin(["val", "dev"])]
+        t = _transform(df.score.to_numpy(), spec["type"])[calibration_mask(df)]
+        med = float(np.median(t))
+        out.append({"source": name, "median": med, "scale": max(float(1.4826 * np.median(np.abs(t - med))), 1e-9), "n_calibration": int(len(t))})
+    return out
 
 
 def member_table(members: dict, roots: dict) -> pd.DataFrame:

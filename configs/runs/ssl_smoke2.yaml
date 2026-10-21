@@ -1,0 +1,6 @@
+# Self-supervised smoke tests, second round (2026-10-20): batch 64 ran out of an L4's 22 GB. Batch 32 plain vs batch 64 with
+# activation checkpointing: whichever is faster per image and fits sets the full run. 2 epochs each, no checkpoint.
+pull_data: true
+jobs:
+  - {name: ssl_smoke_b32, cmd: [screenpad, ssl-adapt, --run-name, ssl_smoke_b32, --epochs, '2', --batch-size, '32', --no-ckpt, --push]}
+  - {name: ssl_smoke_b64ck, cmd: [screenpad, ssl-adapt, --run-name, ssl_smoke_b64ck, --epochs, '2', --batch-size, '64', --grad-ckpt, --no-ckpt, --push]}

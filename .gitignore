@@ -3,6 +3,9 @@
 /results/
 /artefacts/*
 !/artefacts/.gitkeep
+!/artefacts/frozen.json
+!/artefacts/frozen_photo.json
+!/artefacts/preflight_reference.json
 
 .venv*
 .venv.nosync/
@@ -13,3 +16,13 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 .env
+/models/
+
+# Office lock files
+~$*
+
+# docs/: only the Sphinx sources and the model card are tracked
+/docs/report/
+/docs/report_notes.md
+/docs/_build/
+/docs/_autosummary/

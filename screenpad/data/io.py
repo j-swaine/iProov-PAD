@@ -12,15 +12,28 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageCms, ImageOps
+from pillow_heif import register_heif_opener
+
+register_heif_opener()  # HEIC/HEIF (the iPhone default) opens like any other format
 
 from ..constants import IMAGE_EXTENSIONS
 
 _SRGB = ImageCms.createProfile("sRGB")
 
 
+def _to_8bit(img: Image.Image) -> Image.Image:
+    """High-bit-depth greyscale (16-bit PNG/TIFF opens as mode I;16 or I, float as F) rescaled to 8-bit L; Pillow's plain RGB conversion would clip it to white."""
+    if img.mode.startswith("I") or img.mode == "F":
+        a = np.asarray(img, dtype=np.float64)
+        peak = 65535.0 if a.max(initial=0) > 255 else 255.0
+        return Image.fromarray(np.clip(np.rint(a / peak * 255), 0, 255).astype(np.uint8), "L")
+    return img
+
+
 def to_srgb(img: Image.Image) -> Image.Image:
     """Convert `img` to 8-bit sRGB using its embedded ICC profile if it has one, and drop the profile afterwards."""
     icc = img.info.get("icc_profile")
+    img = _to_8bit(img)
     if icc:
         try:
             src = ImageCms.ImageCmsProfile(io.BytesIO(icc))
