@@ -1,8 +1,98 @@
 # screenpad
 
-Screen-replay presentation attack detection (PAD) for face images. `infer.py` reads a folder of images and writes a CSV with an attack score per image (higher = more likely a photograph of a screen) and a decision at a calibrated threshold.
+Screen-replay presentation attack detection (PAD) for face images: give it a folder of images, get back a CSV with an attack score and an attack/bona fide decision for every image. The technical report, submitted alongside this repository, explains the method, the evidence and the trade-offs.
 
-No real attack is used for training: a physics-based simulator turns bona fide faces into synthetic screen recaptures, and camera-only controls make the screen the only difference to learn. The technical report, submitted alongside this repository, explains the method, the evidence and the trade-offs.
+## Scoring your own images
+
+You only need [Docker](https://docs.docker.com/get-docker/). We supply a `Dockerfile` (a recipe), not a pre-built image: step 1 builds the image from it on your machine, and each `docker run` then starts a throwaway container from that image. Run everything from the root of this repository.
+
+**1. Build the image** (once, a few minutes, about 0.8 GB, CPU only):
+
+```bash
+docker build -t screenpad .
+```
+
+**2. Check the machine and download the weights** (once, about 2 GB, kept in a Docker volume called `screenpad-models`):
+
+```bash
+docker run --rm -v screenpad-models:/models screenpad preflight
+```
+
+It should end with `preflight: OK`.
+
+**3. Score a folder of images.** Set `DATA` to the folder holding your images and `OUT` to a folder for the results. Both must be absolute paths. Subfolders are scored too, so a folder laid out like the original data (`Bonafide/` and `Screens/` inside it) can be passed as it is.
+
+```bash
+DATA=/absolute/path/to/images
+OUT=/absolute/path/to/results
+docker run --rm -v screenpad-models:/models -v "$DATA":/data/in:ro -v "$OUT":/data/out \
+    screenpad infer --input /data/in --output /data/out/scores.csv --recursive
+```
+
+The results are written to `$OUT/scores.csv`, one row per file. Inside the container your folders are seen as `/data/in` and `/data/out`, so leave those two paths in the command as they are.
+
+**4. Optional: error rates per subfolder.** If the images are split into folders by class (e.g. `Bonafide/` and `Screens/`), this prints how many in each folder were flagged as attacks. For `Screens/` the rate is the share of attacks caught (1 − APCER); for `Bonafide/` it is the share of genuine images rejected (BPCER).
+
+```bash
+docker run --rm -v "$OUT":/data/out --entrypoint python screenpad -c \
+  "import pandas as pd; d = pd.read_csv('/data/out/scores.csv'); print(d.groupby(d.image.str.split('/').str[0]).attack.agg(flagged_as_attack='sum', images='count', rate='mean'))"
+```
+
+### The output CSV
+
+| Column | Meaning |
+|---|---|
+| `image` | path relative to the input folder, e.g. `Screens/10744.png` |
+| `attack_score` | higher = more likely a photo of a screen. It is a robust z score against genuine calibration images: 0 is a typical genuine image, and each unit is one typical spread of genuine scores |
+| `attack` | 1 if `attack_score` >= `threshold`, else 0 |
+| `threshold` | 1.231, the score that 10% of genuine calibration images exceed |
+| `face_found`, `n_faces` | face detection result; with no face, the image is scored on its largest centred square |
+| `z_<member>` | the score of each model in the ensemble, for diagnosis |
+| `error` | set when a file cannot be scored (unsupported format, corrupt file); the score is left empty |
+
+A different operating point needs no retraining: apply your own threshold to `attack_score`. A lower threshold catches more attacks and rejects more genuine users.
+
+### Without Docker
+
+[uv](https://docs.astral.sh/uv/) installs the pinned Python (3.12) and the exact locked dependencies (`uv.lock`):
+
+```bash
+uv sync --extra torch
+uv run --extra torch screenpad preflight
+uv run --extra torch python infer.py --input /path/to/images --output scores.csv --recursive
+```
+
+## Other useful commands
+
+Shown for Docker; without Docker, replace `docker run --rm -v screenpad-models:/models ... screenpad` with `uv run --extra torch screenpad`.
+
+```bash
+# Score with the initial system instead of the deployed one (separate weights folder, downloaded once)
+docker run --rm -v screenpad-models:/models -v "$DATA":/data/in:ro -v "$OUT":/data/out \
+    screenpad infer --input /data/in --output /data/out/scores_initial.csv --recursive \
+    --frozen artefacts/frozen.json --models /models/initial
+
+# List problem files (unsupported, corrupt, very small, 16-bit) before scoring
+docker run --rm -v screenpad-models:/models -v "$DATA":/data/in:ro screenpad preflight --input /data/in --recursive
+
+# Every command and its options
+docker run --rm screenpad --help
+docker run --rm screenpad infer --help
+```
+
+Every command also takes:
+
+- `--set key=value` to override any configuration value for that run, e.g. `--set num_threads=4` to use 4 CPU threads instead of 6 (repeatable; the keys are those in `configs/*.yaml`);
+- `--config extra.yaml` to merge a whole YAML file of overrides (used by the reproduction commands below, e.g. `screenpad ensemble --config configs/ensemble_photo.yaml`);
+- `--device cpu|mps|cuda` (default: the best available; the threshold was calibrated on CPU, which reproduces it exactly).
+
+Each model's own score is already in the `z_<member>` columns of the output, so a single model does not need a separate run.
+
+**Docker notes.** Weights are not baked into the image: the first run downloads them from the public Hugging Face repo [`Jamie1701/screenpad-runs`](https://huggingface.co/Jamie1701/screenpad-runs) into the `screenpad-models` volume, and later runs reuse it (they also work offline, with `--network none`). Tested in fresh containers with 4 CPUs and 4 GB of memory on Linux arm64 and on x86-64 (emulated): the pre-flight golden test passes on both, and every decision matched local scoring (32 development images; 484 external CelebA-Spoof images on arm64). Scores agree across machines to about 0.03 z on average (at most 0.24 z on single images, from floating-point differences between CPU builds), so only images within about 0.25 z of the threshold could change decision between machines.
+
+## Results
+
+No real attack is used for training: a physics-based simulator turns bona fide faces into synthetic screen recaptures, and camera-only controls make the screen the only difference to learn.
 
 | Held-out test (17 attacks, 194 bona fide) | Initial system | **Deployed system** (default) |
 |---|---|---|
@@ -11,46 +101,6 @@ No real attack is used for training: a physics-based simulator turns bona fide f
 | AUC | 0.982 | 0.988 |
 | Bona fide rejected under sensor noise (sigma 5) | 66.0% | 18.6% |
 | External CelebA-Spoof screen replays caught | 108/108 | 108/108 |
-
-## Quick start with Docker
-
-```bash
-docker build -t screenpad .
-docker run --rm -v screenpad-models:/models screenpad preflight          # checks the machine; downloads the weights (~2 GB, once)
-docker run --rm -v screenpad-models:/models \
-    -v /path/to/images:/data/in:ro -v /path/to/out:/data/out \
-    screenpad infer --input /data/in --output /data/out/scores.csv --recursive
-```
-
-The image is CPU-only (about 0.8 GB). Weights are not baked in: the first `preflight` or `infer` downloads them from the public Hugging Face repo [`Jamie1701/screenpad-runs`](https://huggingface.co/Jamie1701/screenpad-runs) into the named volume, and later runs reuse it (they also work with `--network none`). Tested in fresh containers with 4 CPUs and 4 GB of memory, offline after the first download, on Linux arm64 and on x86-64 (emulated): the pre-flight golden test passes on both, and every decision matched local scoring (32 development images; 484 external CelebA-Spoof images on arm64). Scores agree across machines to about 0.03 z on average (at most 0.24 z on single images, from floating-point differences between CPU builds), so only images within about 0.25 z of the threshold could change decision between machines.
-
-## Quick start without Docker
-
-[uv](https://docs.astral.sh/uv/) installs the pinned Python (3.12) and the exact locked dependencies (`uv.lock`).
-
-```bash
-uv sync --extra torch
-uv run --extra torch screenpad preflight
-uv run --extra torch python infer.py --input /path/to/images --output scores.csv --recursive
-```
-
-`--device cpu|mps|cuda` selects the device (default: the best available); the threshold was calibrated on CPU, which reproduces it exactly.
-
-## Output
-
-One row per file in the input folder:
-
-| Column | Meaning |
-|---|---|
-| `image` | path relative to `--input` |
-| `attack_score` | ensemble score: robust z against bona fide calibration images (0 = a typical bona fide image; each unit is one typical bona fide spread). Higher = more attack-like |
-| `attack` | 1 if `attack_score` >= `threshold`, else 0 |
-| `threshold` | the calibrated threshold: rejects 10% of bona fide calibration images (z 1.231 for the deployed system) |
-| `face_found`, `n_faces` | face detection result; with no face, the image is scored on its largest centred square |
-| `z_<member>` | each ensemble member's score, for diagnosis |
-| `error` | set when a file cannot be scored (unsupported format, corrupt file); score left empty |
-
-A different operating point needs no retraining: threshold `attack_score` directly. Lower thresholds catch more attacks and reject more genuine users.
 
 ## Inputs and assumptions
 
